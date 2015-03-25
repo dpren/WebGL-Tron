@@ -34,11 +34,11 @@ var halfPi = Math.PI/2;
 var size = 60, step = 4;
 var geo = new THREE.Geometry();
 var lineMaterial = new THREE.LineBasicMaterial({ color: 'white' });
-for (var i = -size; i <= size; i += step) {
-	geo.vertices.push(new THREE.Vector3(-size, 0, i));
-	geo.vertices.push(new THREE.Vector3( size, 0, i));
-	geo.vertices.push(new THREE.Vector3( i, 0, -size));
-	geo.vertices.push(new THREE.Vector3( i, 0,  size));
+for (var j = -size; j <= size; j += step) {
+	geo.vertices.push(new THREE.Vector3(-size, 0, j));
+	geo.vertices.push(new THREE.Vector3( size, 0, j));
+	geo.vertices.push(new THREE.Vector3( j, 0, -size));
+	geo.vertices.push(new THREE.Vector3( j, 0,  size));
 }
 var grid = new THREE.Line( geo, lineMaterial, THREE.LinePieces);
 	scene.add(grid);
@@ -121,7 +121,7 @@ scene.add(pointLight2);
 
 var playerspeed = 0.5;
 
-// cycle direction incremented as array so it stays constant
+// cycle direction = i
 var i = 1;
 var dirX = [
 	0,
@@ -136,18 +136,6 @@ var dirZ = [
 	0
 ];
 
-//yuck
-var runf = true;
-var rund = true;
-var runs = true;
-var runj = true;
-var runk = true;
-var runl = true;
-var isPaused = true;
-var view;
-var runyet;
-var runyet2;
-var newRot;
 
 var addTurnCoord = function () {
 	console.log(cube.position);
@@ -155,110 +143,67 @@ var addTurnCoord = function () {
 };
 
 
+var isPaused = true;
+var view;
+
+
+var onKeyDown = function(e) {
+	switch ( e.keyCode ) {
+		case 70: // left
+		case 68:
+		case 83:
+		case 65: 	addTurnCoord();
+					++i;
+					cube.rotateY(halfPi);
+					if(i > 3){i = 0;}
+					break;
+		case 74: // right
+		case 75:
+		case 76:
+		case 186: 	addTurnCoord();
+					--i;
+					cube.rotateY(-halfPi);
+					if(i < 0){i = 3;}
+					break;
+
+		case 80: // p
+					isPaused = !isPaused;
+					break;
+
+		case 86: // v
+					view = !view;
+					break;
+    }
+};
+
+document.addEventListener('keydown', this.onKeyDown, false);
+
 
 
 var render = function () {
 	
 	requestAnimationFrame(render);
 
-
-	//left turn
-	if (keyboard.pressed("f")) {
-		if (runf === true) {
-			runf = false;
-			addTurnCoord();
-	        ++i;
-	        cube.rotateY(halfPi);
-	        if(i > 3){i=0;}
-		}
-	} else {runf = true;}
-	if (keyboard.pressed("d")) {
-		if (rund === true) {
-			rund = false;
-			addTurnCoord();
-	        ++i;
-	        cube.rotateY(halfPi);
-	        if(i > 3){i=0;}
-		}
-	} else {rund = true;}
-	if (keyboard.pressed("s")) {
-		if (runs === true) {
-			runs = false;
-			addTurnCoord();
-	        ++i;
-	        cube.rotateY(halfPi);
-	        if(i > 3){i=0;}
-		}
-	} else {runs = true;}
-
-
-	//right turn
-	if (keyboard.pressed("j")) {
-		if (runj === true) {
-			runj = false;
-			addTurnCoord();
-	        --i;
-	        cube.rotateY(-halfPi);
-	        if(i < 0){i=3;}
-	    }
-	} else {runj = true;}
-	if (keyboard.pressed("k")) {
-		if (runk === true) {
-			runk = false;
-			addTurnCoord();
-	        --i;
-	        cube.rotateY(-halfPi);
-	        if(i < 0){i=3;}
-	    }
-	} else {runk = true;}
-	if (keyboard.pressed("l")) {
-		if (runl === true) {
-			runl = false;
-			addTurnCoord();
-	        --i;
-	        cube.rotateY(-halfPi);
-	        if(i < 0){i=3;}
-	    }
-	} else {runl = true;}
-
-
-
 	//pause
 	if (isPaused === true) {
 		cube.position.x -= dirX[i];
 		cube.position.z -= dirZ[i];
 	}
-	if (keyboard.pressed("p")) {
-		if (runyet === false) {
-			isPaused = !isPaused;
-			runyet = true;
-		} 
-	} else {runyet = false;}
-
+	
 	//brake
 	if (keyboard.pressed("space")) {
 		cube.position.x += dirX[i]/1;
 		cube.position.z += dirZ[i]/1;
 	}
 
-	//view
-	if (keyboard.pressed("v")) {
-		if (runyet2 === false) {
-			view = !view;
-			runyet2 = true;
-		} 
-	} else {runyet2 = false;}
 	if (view === true) {
 		camera.lookAt(cube.position);
 	}
 	
 
-
 	//advance in direction i
 	cube.position.x += dirX[i];
 	cube.position.z += dirZ[i];
-
-	
 
 
 	renderer.render(scene, camera);
