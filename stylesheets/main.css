@@ -6,3 +6,12 @@ body {
 canvas {
 	width: 100%; height: 100%
 }
+
+#GUI {
+	color: white;
+	font-size: 40px;
+	position: absolute;
+	left: 40px;
+	top: 20px;
+	opacity: 0.3;
+}

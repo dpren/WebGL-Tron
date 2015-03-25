@@ -11,7 +11,7 @@ var halfPi = Math.PI/2;
 	var scene = new THREE.Scene();
 
 	var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 1, 1000 );
-		camera.position.set(50,50,60);
+		camera.position.set(50,20,50);
 		camera.rotation.x = -0.7;
 
 
@@ -27,6 +27,7 @@ var halfPi = Math.PI/2;
 	};
 	window.addEventListener( 'resize', resizeWindow );
 
+	var GUI = document.querySelector('#GUI');
 
 
 
@@ -54,54 +55,51 @@ var grid = new THREE.Line( geo, lineMaterial, THREE.LinePieces);
 
 
 
-//"cycle"
-var cubeMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff99 });
+var cubeMaterial = new THREE.MeshLambertMaterial({
+	color: 0x00ffbb,
+	transparent: true,
+	opacity: 0.8
+});
+
 var cube = new THREE.Mesh(new THREE.BoxGeometry(4,4,2), cubeMaterial);
-	cube.position.set(10,2,0);
-	scene.add(cube);
+
+var bcylinder = new THREE.CylinderGeometry( 2, 2, 3, 16 );
+var bwheel = new THREE.Mesh( bcylinder, cubeMaterial );
+	bwheel.position.set(-1.5,0,0);
+	bwheel.rotateX(halfPi);
+	scene.add(bwheel);
+
+var fcylinder = new THREE.CylinderGeometry( 0.7, 0.7, .5, 16 );
+var fwheel = new THREE.Mesh( fcylinder, cubeMaterial );
+	fwheel.position.set(2,-1.3,0);
+	fwheel.rotateX(halfPi);
+	scene.add(fwheel);
+
+//ye olde light-tractor xD
+var lightcycle = new THREE.Object3D();
+	lightcycle.add(cube);
+	lightcycle.add(bwheel);
+	lightcycle.add(fwheel);
+	lightcycle.position.set(0,2,0);
+	scene.add(lightcycle);
 
 
 
 
 
-
-var tail = new THREE.Geometry();
-	tail.vertices.push(new THREE.Vector3(-10,  0, -10));
-	tail.vertices.push(new THREE.Vector3( 20,  0, -10));
-	tail.vertices.push(new THREE.Vector3( 20,  0,  0));
-	tail.vertices.push(new THREE.Vector3( 10,  0,  0));
-var tailMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff });
-var jetwall = new THREE.Line( tail, tailMaterial);
-	scene.add(jetwall);
-
-
-
-
-
-var sqLength = 4;
-
-var squareShape = new THREE.Shape();
-squareShape.moveTo(0, 0);
-squareShape.lineTo(0, 4);
-squareShape.lineTo(8, 4);
-squareShape.lineTo(8, 0);
-squareShape.lineTo(0, 0);
-
-var extrudeSettings = {
-	amount: 0.1,
-	bevelEnabled: false,
-	bevelSegments: 2,
-	steps: 2,
-	bevelSize: 0.2,
-	bevelThickness: 0.2
-};
-
-var geom = new THREE.ExtrudeGeometry(squareShape, extrudeSettings);
-var wallMaterial = new THREE.MeshLambertMaterial({color: 0x00ffbb, transparent: true, opacity: 0.7});
-var wall = new THREE.Mesh( geom, wallMaterial );
-	wall.position.set(12, 0, 0);
-	wall.rotation.set(0, 0, 0);
-	scene.add( wall );
+var wallMaterial = new THREE.MeshBasicMaterial({
+	color: new THREE.Color( 0x00ffdd ),
+	side: THREE.DoubleSide,
+	blending: THREE.AdditiveBlending,
+	opacity: 0.6,
+	transparent: true
+});
+	
+var wallGeometry = new THREE.PlaneBufferGeometry( 1, 4 );
+var m = new THREE.Matrix4();
+	m.makeRotationX(halfPi);
+	m.makeTranslation( 0.5, 2, 0.5 );
+	wallGeometry.applyMatrix( m );
 
 
 
@@ -118,32 +116,19 @@ scene.add(pointLight2);
 
 
 
-
 var playerspeed = 0.5;
 
-// cycle direction = i
-var i = 1;
-var dirX = [
-	0,
-   -playerspeed,
-	0,
-	playerspeed
-];
-var dirZ = [
-   -playerspeed,
-	0,
-	playerspeed,
-	0
-];
 
+var i = 1;
+var lastDir;
+var lastDirection = new THREE.Vector3( 0, 0, 0 );
 
 var addTurnCoord = function () {
-	console.log(cube.position);
-	tail.vertices.push(new THREE.Vector3(cube.position.x, 0, cube.position.z));
+	console.log(lightcycle.position);
 };
 
 
-var isPaused = true;
+var paused = true;
 var view;
 
 
@@ -154,7 +139,7 @@ var onKeyDown = function(e) {
 		case 83:
 		case 65: 	addTurnCoord();
 					++i;
-					cube.rotateY(halfPi);
+					lightcycle.rotateY(halfPi);
 					if(i > 3){i = 0;}
 					break;
 		case 74: // right
@@ -162,12 +147,12 @@ var onKeyDown = function(e) {
 		case 76:
 		case 186: 	addTurnCoord();
 					--i;
-					cube.rotateY(-halfPi);
+					lightcycle.rotateY(-halfPi);
 					if(i < 0){i = 3;}
 					break;
 
 		case 80: // p
-					isPaused = !isPaused;
+					paused = !paused;
 					break;
 
 		case 86: // v
@@ -180,34 +165,81 @@ document.addEventListener('keydown', this.onKeyDown, false);
 
 
 
-var render = function () {
+var animate = function () {
 	
-	requestAnimationFrame(render);
+	requestAnimationFrame(animate);
 
-	//pause
-	if (isPaused === true) {
-		cube.position.x -= dirX[i];
-		cube.position.z -= dirZ[i];
-	}
 	
+	if (!paused) {
+		moveStuff();
+		GUI.style.visibility="hidden"
+	} else {
+		GUI.style.visibility="visible";
+	}
+
 	//brake
 	if (keyboard.pressed("space")) {
-		cube.position.x += dirX[i]/1;
-		cube.position.z += dirZ[i]/1;
+		playerspeed = 0.2;
+	} else {
+		playerspeed = 0.5;
 	}
 
 	if (view === true) {
-		camera.lookAt(cube.position);
+		camera.lookAt(lightcycle.position);
 	}
-	
-
-	//advance in direction i
-	cube.position.x += dirX[i];
-	cube.position.z += dirZ[i];
 
 
 	renderer.render(scene, camera);
 };
 
 
-render();
+var moveStuff = function(turn) {
+
+	var dirX = [
+		0,
+	   -playerspeed,
+		0,
+		playerspeed
+	];
+	var dirZ = [
+	   -playerspeed,
+		0,
+		playerspeed,
+		0
+	];
+
+
+	var lightcycleDirection = new THREE.Vector3( playerspeed, 0, 0 );
+	lightcycleDirection.applyMatrix3( lightcycle.matrix );
+	var turned = !lightcycleDirection.equals( lastDirection );
+
+
+	//if ( turned ) {
+	if (i !== lastDir) {
+		//we have turned, add new wall segment
+		lastDirection = lightcycleDirection.clone();
+		lastDir = i;
+
+	    wall = new THREE.Mesh(wallGeometry, wallMaterial);
+		wall.quaternion.copy(lightcycle.quaternion);
+		//wall.position = lightcycle.position.clone();
+		wall.position.set(lightcycle.position.x,0,lightcycle.position.z);
+		wall.scale.x = 0;
+		scene.add(wall);
+	}
+
+	// move light cycle
+	lightcycle.position.x -= dirX[i];
+	lightcycle.position.z -= dirZ[i];
+
+	//alternate method
+	//lightcycle.position.add( lightcycleDirection );
+
+	// move wall
+	wall.scale.x += playerspeed;
+	
+	return;
+};
+
+
+animate();
