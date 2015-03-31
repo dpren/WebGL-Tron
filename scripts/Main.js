@@ -89,6 +89,7 @@ var lightcycle = createLightcycle(0x00ffbb,0,0);
 
 
 /*—–––––––––––wall constructor—–––––––––––*/	
+var wall;
 var wallParent = new THREE.Object3D();
 scene.add(wallParent);
 
@@ -102,7 +103,6 @@ var createWall = function(colorCode) {
 		opacity: 0.6,
 		transparent: true
 	});
-	var meshFace = new THREE.MeshFaceMaterial(wallMaterial);
 
 	var wallGeometry = new THREE.PlaneBufferGeometry( 1, 4 );
 	var m = new THREE.Matrix4();
@@ -308,12 +308,10 @@ var animate = function() {
 	// var delta = clock.getDelta();
 	
 	if (!paused) {
-		//requestAnimationFrame(animate);
+
 		if (lightcycle.alive) {
 			moveStuff();
 			collisionDetection();
-		} else {
-			
 		}
 		
 		for (var r = 0; r < RENDER_LIST.length; r += 1) {
