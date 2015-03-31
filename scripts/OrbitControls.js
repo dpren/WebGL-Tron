@@ -68,7 +68,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 	this.maxAzimuthAngle = Infinity; // radians
 
 	// Set to true to disable use of the keys
-	this.noKeys = false;
+	this.noKeys = true;
 
 	// The four arrow keys
 	this.keys = { LEFT: 37, UP: 38, RIGHT: 39, BOTTOM: 40 };

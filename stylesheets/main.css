@@ -1,5 +1,20 @@
-html {
+@font-face {
+    font-family: nicefont;
+    src: url(../fonts/nicefont.woff);
+}
+
+@font-face {
+    font-family: fontawesome;
+    src: url(../fonts/fontawesome.woff);
+}
+
+* {
 	margin: 0;
+	font-weight: 300;
+	-webkit-font-smoothing: antialiased;
+}
+
+html {
 	width: 100%;
 	height: 100%
 	overflow: hidden;
@@ -14,11 +29,41 @@ canvas {
 	height: 100%;
 }
 
-#GUI {
-	color: white;
-	font-size: 40px;
-	position: absolute;
-	left: 40px;
-	top: 20px;
+b {
+	font-weight: bold;
+	color: yellow;
+}
+
+#pause-msg {
+	font-family:  fontawesome, sans-serif;
 	opacity: 0.3;
 }
+
+#press-z {
+	font-family:  nicefont, sans-serif;
+	opacity: 0.4;
+	margin-bottom: 30px;
+}
+
+
+#welcome-msg {
+	position: absolute;
+	width: 100%;	
+	height: 100%;
+	left: 0;
+	right: 0;
+	margin: 0 auto;
+	background-color: rgba(10,10,10, 0.8);
+}
+
+#promptbox {
+	position: absolute;
+	color: white;
+	opacity: 0.85;
+	font-family:  fontawesome, sans-serif;
+	letter-spacing: 4px;
+	text-align: center;
+	top: 14%;
+	width: 100%;
+}
+

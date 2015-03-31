@@ -4,16 +4,39 @@
     <meta charset="utf-8">
     <title>Tron</title>
     <link rel="stylesheet" href="stylesheets/main.css"/>
-    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"/>
+    <link href="fonts/nicefont.woff" />
+    <link href="fonts/fontawesome.woff" />
 
-
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/three.js/r69/three.min.js"></script>
-
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js"></script>
+    
     <script src='scripts/THREEx.KeyboardState.js'></script>
     <script src="scripts/OrbitControls.js"></script>
+    <script src="scripts/stats.min.js"></script>
 </head>
 <body>
-    <div id="GUI">Paused</div>
+    <div id="stats"></div>
+    
+    <div >
+    </div>
+
+	<div id="welcome-msg" style="visibility:visible;">
+		<div id="promptbox">
+    		<h1 id="pause-msg">Paused</h1>
+    		<br/>
+    		<h4 id="press-z" style="visibility:hidden;">press Z to respawn</h4>
+	    	<br/>
+	    	<br/>
+	    	<h3>controls:</h3>
+	    	<br/>
+	    	<h3><b>a s d f</b> ← turn keys → <b>j k l ; </b></h3>
+			<h3><b>space</b> - brake</h3>
+			<h3><b>v</b> - view</h3>
+			<br/>
+			<h3>press <b>p</b> to unpause</h3>
+		</div>
+	</div>
+
+
     <script src="scripts/Main.js"></script>
 </body>
 </html>
