@@ -11,7 +11,7 @@ var halfPi = Math.PI/2;
 	var scene = new THREE.Scene();
 
 	var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 1, 1000 );
-		camera.position.set(-30,30,30);
+		camera.position.set(40,30,30);
 
 
 	var cameraControls = new THREE.OrbitControls(camera);
@@ -40,9 +40,9 @@ var halfPi = Math.PI/2;
 
 
 /*—––––––––––––line grid—––––––––––––*/
-var gridSize = 60;
-var gridHelper = new THREE.GridHelper(gridSize, 4);
-gridHelper.setColors(0xaaaaaa,0xaaaaaa);
+var gridSize = 75;
+var gridHelper = new THREE.GridHelper(gridSize, 5);
+gridHelper.setColors(0xaaaada,0xaaaaaa);
 scene.add(gridHelper);
 /*–––––––––––––––––––––––––––––––––––*/
 
@@ -79,6 +79,7 @@ var createLightcycle = function(colorCode, x, z){
 		cycle.position.set(x,2,z);
 		
 		cycle.alive = true;
+		cycle.respawnAvailable = false;
 
 	return cycle;
 };
@@ -130,7 +131,9 @@ scene.add(pointLight2);
 
 var RENDER_LIST = []; // push crap into this to get it animated
 
+
 var turnCoords = [];
+
 
 var paused = true;
 var showStats = true
@@ -139,27 +142,45 @@ var view = 0;
 var i = 1;
 var lastDir;
 
-var playerspeed = 0.1;
-function constrain(min, max) {
+
+var easing = 0.1;
+var brakeFactor = 0.5;
+var regularSpeed = 1.0;
+
+var targetSpeed = 0.01;
+var playerSpeed = 0.01;
+
+var constrain = function(min, max) {
 	return function(n) {
     	return Math.max(min, Math.min(n, max));
 	};
 }
-var constrainSpeed = constrain(0.5, 1);  // min/max speed
+var constrainSpeed = constrain(0.3, 1.0);  // min/max speed
+
+var blastRadius = 0;
+
+
 
 
 var spawnCycle = function() {
+	lastDir = null; // for turn detection
+	turnCoords = [];
 	lightcycle.alive = true;
 	lightcycle.position.set(0,2,0);
 	scene.add(lightcycle);
 	document.querySelector('#press-z').style.visibility = "hidden";
-
 }
 
 
-var addTurnCoord = function () {
-	turnCoords.push(lightcycle.position.x, lightcycle.position.z);
-		console.log(lightcycle.position.x, lightcycle.position.z);
+var addTurnCoords = function () {
+
+	turnCoords.push({
+		x: lightcycle.position.x,
+		z: lightcycle.position.z
+	});
+
+	//console.log(lightcycle.position.x, lightcycle.position.z);
+	//console.log(turnCoords.length-1);
 };
 
 
@@ -169,27 +190,50 @@ var collapseWalls = function(){
 	}
 	
 	if (wallParent.scale.y <= 0) { // walls are down, set up to respawn
+		lightcycle.respawnAvailable = true;
 		wallParent.children = [];
 		wallParent.scale.y = 1;
-		lastDir = null; // for turn detection
-		coords = [];
 		document.querySelector('#press-z').style.visibility = "visible";
 		RENDER_LIST.splice(RENDER_LIST.indexOf(this), 1); // clear this task
 	}
+};
+
+var crash = function() {
+	targetSpeed = 0;
+	playerSpeed = 0;
+	lightcycle.alive = false;
+	scene.remove(lightcycle);
+	wall.scale.x -= blastRadius;
+	setTimeout(function(){RENDER_LIST.push(collapseWalls)}, 1000);
 };
 
 
 var collisionDetection = function() {
 
 	if (lightcycle.position.x >= gridSize || lightcycle.position.x <= -gridSize || lightcycle.position.z >= gridSize || lightcycle.position.z <= -gridSize) {
+		
+		crash();
 
-		playerspeed = 0;
-		lightcycle.alive = false;
-		scene.remove(lightcycle);
-		RENDER_LIST.push(collapseWalls);
+	} else {
+
+		for (var w = 2; w < turnCoords.length; w += 1) {
+
+			
+			if (
+				doLineSegmentsIntersect(
+										turnCoords[turnCoords.length-1],
+										lightcycle.position,
+										turnCoords[w-2],
+										turnCoords[w-1]
+										)
+				=== true ) {
+				
+				crash();
+
+			}
+		}
 	}
-}
-
+}; 
 
 
 var onKeyDown = function(e) {
@@ -199,7 +243,6 @@ var onKeyDown = function(e) {
 		case 83:
 		case 65: 	
 					++i;
-					addTurnCoord();
 					lightcycle.rotateY(halfPi);
 					if(i > 3){i = 0;}
 					break;
@@ -208,7 +251,6 @@ var onKeyDown = function(e) {
 		case 76:
 		case 186: 	
 					--i;
-					addTurnCoord();
 					lightcycle.rotateY(-halfPi);
 					if(i < 0){i = 3;}
 					break;
@@ -235,8 +277,9 @@ var onKeyDown = function(e) {
 					break;
 
 		case 90: // z - respawn
-					if (lightcycle.alive === false && wallParent.scale.y === 1) {
+					if (lightcycle.respawnAvailable === true) {
 						spawnCycle();
+						lightcycle.respawnAvailable = false;
 					}
 					break;
     }
@@ -245,7 +288,11 @@ var onKeyDown = function(e) {
 document.addEventListener('keydown', this.onKeyDown, true);
 
 
-
+var targetCamera = {
+	x: -40,
+	y:  30,
+	z:  0
+};
 var cameraView = function(){
 	
 	if (view === 0) {		
@@ -261,7 +308,10 @@ var cameraView = function(){
 	 // cockpit
 		var relativeCameraOffset = new THREE.Vector3(0,0,0);
 		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
-		camera.position.set(cameraOffset.x, cameraOffset.y, cameraOffset.z);
+		//camera.position.set(cameraOffset.x, cameraOffset.y, cameraOffset.z);
+		camera.position.x += (cameraOffset.x - camera.position.x) * easing/2
+		camera.position.y += (cameraOffset.y - camera.position.y) * easing/2
+		camera.position.z += (cameraOffset.z - camera.position.z) * easing/2
 		camera.lookAt( lightcycle.position );
 	}
 
@@ -269,30 +319,47 @@ var cameraView = function(){
 	 // chase
 		var relativeCameraOffset = new THREE.Vector3(-40,30,0);
 		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
-		camera.position.set(cameraOffset.x, cameraOffset.y, cameraOffset.z);
+		camera.position.x += (cameraOffset.x - camera.position.x) * easing
+		camera.position.y += (cameraOffset.y - camera.position.y) * easing
+		camera.position.z += (cameraOffset.z - camera.position.z) * easing
 		camera.lookAt( lightcycle.position );
+
 	}
 };
 
 
 var moveStuff = function() {
 
+	if (keyboard.pressed('space')) {	
+		//targetSpeed = constrainSpeed(targetSpeed -= 0.05); // brake
+		targetSpeed = brakeFactor;
+	} else {
+		//targetSpeed = constrainSpeed(targetSpeed += 0.05); // accel
+		targetSpeed = regularSpeed;
+	}
+
 	if (i !== lastDir) {
 		// we have turned or respawned, add new wall segment
 		lastDir = i;
+
 	    wall = createWall(0x00ffdd);
 		wall.quaternion.copy(lightcycle.quaternion);
 		wall.position.x = lightcycle.position.x;
 		wall.position.z = lightcycle.position.z;
 		wall.scale.x = 0;
 		wallParent.add(wall);
+
+		playerSpeed = constrainSpeed(playerSpeed - 0.1);
+		addTurnCoords();
 	}
 
+	playerSpeed = playerSpeed + (targetSpeed - playerSpeed) * easing;
+
 	// move lightcycle
-	lightcycle.translateX( playerspeed );
+	lightcycle.translateX( playerSpeed );
 
 	// move wall
-	wall.scale.x += playerspeed;
+	wall.scale.x += playerSpeed;
 	
 	return;
 };
@@ -310,25 +377,21 @@ var animate = function() {
 	if (!paused) {
 
 		if (lightcycle.alive) {
-			moveStuff();
 			collisionDetection();
+			moveStuff();
 		}
 		
 		for (var r = 0; r < RENDER_LIST.length; r += 1) {
 			RENDER_LIST[r]();
 		}
 		
-		if (keyboard.pressed('space')) {
-			playerspeed = constrainSpeed(playerspeed -= 0.05); // brake
-		} else {
-			playerspeed = constrainSpeed(playerspeed += 0.05); // accel
-		}	
 	}
+
 
 	cameraView();
 	stats.update();
 	renderer.render(scene, camera);
-};
+}
 
 
 
