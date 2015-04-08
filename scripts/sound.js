@@ -1,118 +1,94 @@
-// Detect if the audio context is supported.
-window.AudioContext = (
-  window.AudioContext ||
-  window.webkitAudioContext ||
-  null
+var ctx = new AudioContext();
+var bufferLoader = new BufferLoader(
+    ctx,
+    [
+      "sounds/AAcyclrun.wav",
+      "sounds/AAexpl.wav"
+    ]
 );
-
-if (!AudioContext) {
-  throw new Error("AudioContext not supported!");
-} 
+bufferLoader.load();
 
 
 
+var cycleSounds = ctx.createGain();
+cycleSounds.panner = ctx.createPanner();
+cycleSounds.panner.panningModel = "equalpower" // "HRTF" realism, "equalpower" performance
 
-  var ctx = new AudioContext();
-
-
-  var mainVolume = ctx.createGain();
-
-  mainVolume.connect(ctx.destination);
-
-
-
-  var sound = {};
-  sound.source = ctx.createBufferSource();
-  sound.volume = ctx.createGain();
-  sound.panner = ctx.createPanner();
-
-  sound.source.connect(sound.volume);
-
-
-  sound.volume.connect(sound.panner);
-  sound.panner.connect(mainVolume);
+cycleSounds.connect(cycleSounds.panner);
+cycleSounds.panner.connect(ctx.destination);
 
 
 
+var playSound = function(buffer, vol, pitch, loop) {
+    var src = ctx.createBufferSource();
+    src.gainNode = ctx.createGain();
 
+    src.connect(src.gainNode);
+    src.gainNode.connect(cycleSounds);
 
-var cyclerun = {};
-
-var playCycleEngine = function() {
-
-  cyclerun.source = ctx.createBufferSource();
-  cyclerun.volume = ctx.createGain();
-  cyclerun.volume.gain.value = 0.6;
-  cyclerun.panner = ctx.createPanner();
-
-  cyclerun.source.connect(cyclerun.volume);
-
-  cyclerun.volume.connect(cyclerun.panner);
-  cyclerun.panner.connect(mainVolume);
-
-  cyclerun.source.loop = true;
-
-
-  var request3 = new XMLHttpRequest();
-  request3.open("GET", "sounds/cyclrun.wav", true);
-  request3.responseType = "arraybuffer";
-  request3.onload = function(e) {
-
+    src.buffer = buffer;
+    src.gainNode.gain.value = vol;
+    src.playbackRate.value = pitch;
+    src.loop = loop;
     
-    ctx.decodeAudioData(this.response, function onSuccess(buffer) {
-      cyclerun.buffer = buffer;
+    src.start(ctx.currentTime);
 
-      
-      cyclerun.source.buffer = cyclerun.buffer;
-      cyclerun.source.start(ctx.currentTime);
-
-    }, function onFailure() {
-      alert("Decoding the audio buffer failed");
-    });
-  };
-
-  request3.send();
+    return src;
 };
 
 
 
+// function makeDistortionCurve(amount) {
+//   var k = typeof amount === 'number' ? amount : 50,
+//     n_samples = 44100,
+//     curve = new Float32Array(n_samples),
+//     deg = Math.PI / 180,
+//     i = 0,
+//     x;
+//   for ( ; i < n_samples; ++i ) {
+//     x = i * 2 / n_samples - 1;
+//     curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+//   }
+//   return curve;
+// };
 
-var explosion = {};
+// var oscillator = function(osctype, vol, pitch){
 
-var playExplosion = function() {
+//  var osc = ctx.createOscillator();
+//  var gainNode = ctx.createGain();
+//  var distortion = ctx.createWaveShaper();
+//    distortion.curve = makeDistortionCurve(200);
+//    distortion.oversample = '4x';
 
-  //var explosion = {};
-  explosion.source = ctx.createBufferSource();
-  explosion.volume = ctx.createGain();
-  explosion.panner = ctx.createPanner();
+//  osc.type = osctype;
+//  osc.frequency.value = pitch;
+//  osc.connect(cycleSounds);
 
-  explosion.source.connect(explosion.volume);
+//  distortion.connect(cycleSounds);
+  
+//  gainNode.connect(ctx.destination);
+//  gainNode.gain.value = vol;
+
+//  osc.start();
+
+//  return {
+//    osc: osc,
+//    gainNode: gainNode
+//  };
+// };
 
 
-  explosion.volume.connect(explosion.panner);
-  explosion.panner.connect(mainVolume);
+var engineSound;
+var engineSound2;
+var engineOsc
+var explosionSound;
+var turnSound;
 
 
 
-
-  var request2 = new XMLHttpRequest();
-  request2.open("GET", "sounds/expl.wav", true);
-  request2.responseType = "arraybuffer";
-  request2.onload = function(e) {
-
-    // Create a buffer from the response ArrayBuffer.
-    ctx.decodeAudioData(this.response, function onSuccess(buffer) {
-      explosion.buffer = buffer;
-
-      // Make the sound source use the buffer and start playing it.
-      explosion.source.buffer = explosion.buffer;
-      explosion.source.start(ctx.currentTime);
-      explosion.source.stop(ctx.currentTime + 1000);
-
-    }, function onFailure() {
-      alert("Decoding the audio buffer failed");
-    });
-  };
-
-  request2.send();
-};
+// var awesomeSaucesomeTurnSound = function() {
+//     var turnOsc = oscillator('sawtooth', 0.15, ((dir+1)/lastDir)*500);
+//     var turnOsc2 = oscillator('sawtooth', 0.15, (((dir/lastDir)+2)/2)*500);
+//     turnOsc.osc.stop(ctx.currentTime+0.05);
+//     turnOsc2.osc.stop(ctx.currentTime+0.05);
+// }

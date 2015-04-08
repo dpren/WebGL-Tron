@@ -39,86 +39,6 @@ var halfPi = Math.PI/2;
 
 
 
-var bufferLoader = new BufferLoader(
-    ctx,
-    [
-      "sounds/AAcyclrun.wav",
-      "sounds/AAexpl.wav",
-      "sounds/lazer.wav"
-    ]
-);
-bufferLoader.load();
-
-
-var playSound = (function(buffer, vol, pitch, loop) {
-    var source = ctx.createBufferSource();
-    source.gainNode = ctx.createGain();
-
-    source.loop = loop;
-    source.buffer = buffer;
-    source.connect(source.gainNode);
-    source.gainNode.connect(ctx.destination);
-
-    source.gainNode.gain.value = vol;
-    source.playbackRate.value = pitch;
-
-    source.start(ctx.currentTime);
-
-    return source;
-});
-
-
-
-
-function makeDistortionCurve(amount) {
-  var k = typeof amount === 'number' ? amount : 50,
-    n_samples = 44100,
-    curve = new Float32Array(n_samples),
-    deg = Math.PI / 180,
-    i = 0,
-    x;
-  for ( ; i < n_samples; ++i ) {
-    x = i * 2 / n_samples - 1;
-    curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
-  }
-  return curve;
-};
-
-var oscillator = function(osctype, vol, pitch){
-
-	var osc = ctx.createOscillator();
-	var gainNode = ctx.createGain();
-	var distortion = ctx.createWaveShaper();
-		distortion.curve = makeDistortionCurve(600);
-		distortion.oversample = '4x';
-
-	osc.type = osctype;
-	osc.frequency.value = pitch;
-	osc.connect(distortion);
-
-	distortion.connect(gainNode);
-	
-	gainNode.connect(ctx.destination);
-	gainNode.gain.value = vol;
-
-	osc.start();
-
-	return {
-		osc: osc,
-		gainNode: gainNode
-	};
-};
-
-
-var engineSound;
-var engineSound2;
-var engineOsc
-var explosionSound;
-var turnSound;
-
-
-
-
 
 
 
@@ -222,7 +142,7 @@ var paused = true;
 var showStats = true
 var view = 0;
 
-var i = 1;
+var dir = 1; // cycle direction
 var lastDir;
 
 
@@ -231,13 +151,12 @@ var friction = 0.005;
 
 var brakeFactor = 0.5;
 var boostFactor = 1.5;
-
 var turnSpeedFactor = 0.01;
-var regularSpeed = 1.0;
-var startingSeed = 0.75;
 
+var regularSpeed = 1.0;
+var startingSpeed = 0.75;
 var targetSpeed = regularSpeed;
-var playerSpeed = startingSeed;
+var playerSpeed = startingSpeed;
 var lastPlayerSpeed = playerSpeed;
 
 var constrain = function(min, max) {
@@ -258,13 +177,13 @@ var spawnCycle = function() {
 	turnCoords = [];
 	lightcycle.alive = true;
 	lightcycle.position.set(0,2,0);
-	playerSpeed = startingSeed;
+	playerSpeed = startingSpeed;
 	scene.add(lightcycle);
 
 
-	engineSound = playSound(bufferLoader.bufferList[0], 0.2, 1, true);
-	engineSound2 = playSound(bufferLoader.bufferList[2], 0.1, 1, true);
-	//engineOsc = oscillator('sawtooth', 0.1, 100);
+	engineSound = playSound(bufferLoader.bufferList[0], 0.6, 1, true);
+	//engineSound2 = playSound(bufferLoader.bufferList[2], 0.3, 1, true);
+	//engineOsc = oscillator('triangle', 0.07, 100);
 
 	document.querySelector('#press-z').style.visibility = "hidden";
 };
@@ -272,15 +191,15 @@ var spawnCycle = function() {
 var turnCycle = {
 	left: function() {
 		
-		++i;
+		++dir;
 		lightcycle.rotateY(halfPi);
-		if(i > 3){i = 0;}
+		if(dir > 3){dir = 0;}
 	},
 	right: function() {
 		
-		--i;
+		--dir;
 		lightcycle.rotateY(-halfPi);
-		if(i < 0){i = 3;}
+		if(dir < 0){dir = 3;}
 	},
 };
 
@@ -322,9 +241,9 @@ var crash = function() {
 	scene.remove(lightcycle);
 	wall.scale.x -= blastRadius;
 
-	explosionSound = playSound(bufferLoader.bufferList[1], 0.4, 1, false);
+	explosionSound = playSound(bufferLoader.bufferList[1], 1.0, 1, false);
 	engineSound.stop();
-	engineSound2.stop();
+	//engineSound2.stop();
 	//engineOsc.osc.stop();
 
 	setTimeout(function(){RENDER_LIST.push(collapseWalls)}, 1000);
@@ -339,6 +258,11 @@ var collisionDetection = function() {
 
 	} else {
 
+		// cycleAhead = {
+		// 	x: lightcycle.position.x,
+		// 	z: lightcycle.position.z
+		// };
+
 		for (var w = 2; w < turnCoords.length; w += 1) {
 
 			
@@ -349,11 +273,13 @@ var collisionDetection = function() {
 										turnCoords[w-2],
 										turnCoords[w-1]
 										)
-				=== true ) {
-				
-				crash();
+				=== true ){
+
+				crash()
 
 			}
+
+
 		}
 	}
 }; 
@@ -377,22 +303,22 @@ var onKeyDown = function(e) {
 		case 80: // p
 					paused = !paused;
 					if (!paused) {
-						document.querySelector('#pause-msg').style.visibility="hidden"
+						document.querySelector('#pause-msg').style.visibility="hidden";
 					} else {
 						document.querySelector('#pause-msg').style.visibility="visible";
 					}
 					break;
-		case 73: // i
+		case 73: // dir
 					showStats = !showStats;
 					if (showStats) {
 						stats.domElement.style.visibility="visible";
 					} else {
-						stats.domElement.style.visibility="hidden"
+						stats.domElement.style.visibility="hidden";
 					}
 					break;
 		case 86: // v
 					view += 1;
-					if(view > 4){
+					if (view > 4) {
 						if (wallParent.children[wallParent.children.length-1]) {
 							wallParent.children[wallParent.children.length-1].visible = true;
 						}
@@ -455,11 +381,12 @@ var cameraView = function() {
 	 // cockpit
 		var relativeCameraOffset = new THREE.Vector3(-2+(2.5*playerSpeed),0,0);
 		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
-		camera.position.x += (cameraOffset.x - camera.position.x) * 0.4;
+		camera.position.x += (cameraOffset.x - camera.position.x) * 0.5;
 		camera.position.y = 2;
-		camera.position.z += (cameraOffset.z - camera.position.z ) * 0.4;
+		camera.position.z += (cameraOffset.z - camera.position.z ) * 0.5;
 
-	 	camera.lookAt(lightcycle.position);
+	 	//camera.lookAt(lightcycle.position);
+	 	camera.lookAt(cameraOffset);
 
 		lightcycle.visible = false;
 		if (wallParent.children[wallParent.children.length-2]) {
@@ -494,7 +421,8 @@ var moveStuff = function() {
 		}
 	}
 
-	if (i !== lastDir) { // we have turned or respawned, add new wall segment
+
+	if (dir !== lastDir) { // we have turned or respawned
 		
 	    wall = createWall(0x00ffdd);
 		wall.quaternion.copy(lightcycle.quaternion);
@@ -504,30 +432,55 @@ var moveStuff = function() {
 		wallParent.add(wall);
 		addTurnCoords();
 
-		if (lastDir !== null) {
-			// playerSpeed = constrainSpeed(playerSpeed - 0.1);
+		if (lastDir !== null) { // skip respawn
+			turnSound = playSound(bufferLoader.bufferList[1], 0.7, 10, false);
+			//awesomeSaucesomeTurnSound();
+
 			targetSpeed = constrainSpeed(playerSpeed*turnSpeedFactor);
-			turnSound = playSound(bufferLoader.bufferList[1], 0.3, 10, false);
 			friction = 0.08;
 		}
-		
-		lastDir = i;
+
+		lastDir = dir;
 	}
 
 
 	playerSpeed = playerSpeed + (targetSpeed - playerSpeed) * friction;
 
-
-	// move lightcycle
-	lightcycle.translateX( playerSpeed );
-
-	// move wall
-	wall.scale.x += playerSpeed;
+	lightcycle.translateX( playerSpeed );  // move lightcycle
+	wall.scale.x += playerSpeed;  // move wall
 	
 	return;
 };
 
+var audioMixing = function() {
 
+	engineSound.playbackRate.value = playerSpeed;
+	//engineSound2.playbackRate.value = playerSpeed * 1.8;
+	//engineOsc.osc.frequency.value = playerSpeed * 110;
+
+	cycleSounds.panner.setPosition(lightcycle.position.x, lightcycle.position.y, lightcycle.position.z);
+	ctx.listener.setPosition(camera.position.x, camera.position.y, camera.position.z);
+
+	var m = camera.matrix;
+	var mx = m.elements[12], my = m.elements[13], mz = m.elements[14];
+	m.elements[12] = m.elements[13] = m.elements[14] = 0;
+
+	// Multiply the orientation vector by the world matrix of the camera.
+	var vec = new THREE.Vector3(0,0,1);
+	vec.applyProjection(m);
+	vec.normalize();
+	// Multiply the up vector by the world matrix.
+	var up = new THREE.Vector3(0,-1,0);
+	up.applyProjection(m);
+	up.normalize();
+
+	// Set the orientation and the up-vector for the listener.
+	ctx.listener.setOrientation(vec.x, vec.y, vec.z, up.x, up.y, up.z);
+
+	m.elements[12] = mx;
+	m.elements[13] = my;
+	m.elements[14] = mz;
+};
 
 
 
@@ -542,32 +495,25 @@ var animate = function() {
 		if (lightcycle.alive) {
 			collisionDetection();
 			moveStuff();
-			
-			engineSound.playbackRate.value = playerSpeed;
-			engineSound2.playbackRate.value = playerSpeed * 1.15;
-			//engineOsc.osc.frequency.value = playerSpeed * 104;
+			audioMixing();
 		}
 		
 		for (var r = 0; r < RENDER_LIST.length; r += 1) {
 			RENDER_LIST[r]();
 		}
+		
 
+	} 
+	
 		cameraView();
 
-	} else if (view !== 4) {
-		cameraView();
-	}
 
 	
-
-	//engineSound.panner.setPosition(lightcycle.position.x, lightcycle.position.y, lightcycle.position.z);
-	//engineSound.panner.setVelocity(lightcycle.position.x, lightcycle.position.y, lightcycle.position.z);	
-	//ctx.listener.setPosition(camera.position.x, camera.position.y, camera.position.z);
 
 
 	stats.update();
 	renderer.render(scene, camera);
-}
+};
 
 
 

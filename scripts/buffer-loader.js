@@ -1,17 +1,3 @@
-// Detect if the audio context is supported.
-window.AudioContext = (
-    window.AudioContext ||
-    window.webkitAudioContext ||
-    null
-);
-if (!AudioContext) {
-    throw new Error("AudioContext not supported!");
-}
-
-
-var ctx = new AudioContext();
-
-
 function BufferLoader(context, urlList) {
 	this.context = context;
     this.urlList = urlList;
