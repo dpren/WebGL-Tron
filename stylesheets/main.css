@@ -30,19 +30,19 @@ canvas {
 }
 
 b {
-	font-weight: bold;
+	//font-weight: bold;
 	color: yellow;
 }
 
 #pause-msg {
 	font-family:  fontawesome, sans-serif;
 	opacity: 0.3;
+	margin-bottom: 30px;
 }
 
 #press-z {
 	font-family:  nicefont, sans-serif;
 	opacity: 0.4;
-	margin-bottom: 30px;
 }
 
 
@@ -60,7 +60,7 @@ b {
 	position: absolute;
 	color: white;
 	opacity: 0.85;
-	font-family:  fontawesome, sans-serif;
+	font-family:  nicefont, sans-serif;
 	letter-spacing: 4px;
 	text-align: center;
 	top: 14%;

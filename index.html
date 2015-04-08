@@ -7,31 +7,38 @@
     <link href="fonts/nicefont.woff" />
     <link href="fonts/fontawesome.woff" />
 
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js"></script>
+    <script src="scripts/three.min.js"></script>
+    <!--<script src="http://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js"></script>-->
     
     <script src='scripts/THREEx.KeyboardState.js'></script>
+    <script src='scripts/THREEx.FullScreen.js'></script>
     <script src="scripts/OrbitControls.js"></script>
     <script src="scripts/stats.min.js"></script>
     <script src="scripts/line-segments-intersect.js"></script>
+    <script src="scripts/buffer-loader.js"></script>
 </head>
 <body>
     <div id="stats"></div>
     
-    <div >
+    <div>
     </div>
 
 	<div id="welcome-msg" style="visibility:visible;">
 		<div id="promptbox">
-    		<h1 id="pause-msg">Paused</h1>
-    		<br/>
     		<h4 id="press-z" style="visibility:hidden;">press Z to respawn</h4>
+            <br/>
+            <h1 id="pause-msg">Paused</h1>
 	    	<br/>
 	    	<br/>
-	    	<h3>controls:</h3>
+	    	<!-- <h3>controls:</h3> -->
 	    	<br/>
 	    	<h3><b>a s d f</b> ← turn keys → <b>j k l ; </b></h3>
-			<h3><b>space</b> - brake</h3>
+            <br/>
+            <h3><b>space</b> - brake</h3>
+            <h3><b>b</b> - boost</h3>
+
 			<h3><b>v</b> - view</h3>
+            <h3><b>w</b> - fullscreen</h3>
 			<br/>
 			<h3>press <b>p</b> to unpause</h3>
 		</div>

@@ -2,6 +2,7 @@ var keyboard = new THREEx.KeyboardState();
 var clock = new THREE.Clock();
 var halfPi = Math.PI/2;
 
+
 //setup
 //var init = function () {
 	var renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -11,7 +12,7 @@ var halfPi = Math.PI/2;
 	var scene = new THREE.Scene();
 
 	var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 1, 1000 );
-		camera.position.set(40,30,30);
+		camera.position.set(-100,100,100);
 
 
 	var cameraControls = new THREE.OrbitControls(camera);
@@ -38,18 +39,99 @@ var halfPi = Math.PI/2;
 
 
 
+var bufferLoader = new BufferLoader(
+    ctx,
+    [
+      "sounds/AAcyclrun.wav",
+      "sounds/AAexpl.wav",
+      "sounds/lazer.wav"
+    ]
+);
+bufferLoader.load();
+
+
+var playSound = (function(buffer, vol, pitch, loop) {
+    var source = ctx.createBufferSource();
+    source.gainNode = ctx.createGain();
+
+    source.loop = loop;
+    source.buffer = buffer;
+    source.connect(source.gainNode);
+    source.gainNode.connect(ctx.destination);
+
+    source.gainNode.gain.value = vol;
+    source.playbackRate.value = pitch;
+
+    source.start(ctx.currentTime);
+
+    return source;
+});
+
+
+
+
+function makeDistortionCurve(amount) {
+  var k = typeof amount === 'number' ? amount : 50,
+    n_samples = 44100,
+    curve = new Float32Array(n_samples),
+    deg = Math.PI / 180,
+    i = 0,
+    x;
+  for ( ; i < n_samples; ++i ) {
+    x = i * 2 / n_samples - 1;
+    curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+  }
+  return curve;
+};
+
+var oscillator = function(osctype, vol, pitch){
+
+	var osc = ctx.createOscillator();
+	var gainNode = ctx.createGain();
+	var distortion = ctx.createWaveShaper();
+		distortion.curve = makeDistortionCurve(600);
+		distortion.oversample = '4x';
+
+	osc.type = osctype;
+	osc.frequency.value = pitch;
+	osc.connect(distortion);
+
+	distortion.connect(gainNode);
+	
+	gainNode.connect(ctx.destination);
+	gainNode.gain.value = vol;
+
+	osc.start();
+
+	return {
+		osc: osc,
+		gainNode: gainNode
+	};
+};
+
+
+var engineSound;
+var engineSound2;
+var engineOsc
+var explosionSound;
+var turnSound;
+
+
+
+
+
+
 
 /*—––––––––––––line grid—––––––––––––*/
-var gridSize = 75;
-var gridHelper = new THREE.GridHelper(gridSize, 5);
-gridHelper.setColors(0xaaaada,0xaaaaaa);
+var gridSize = 300;
+var gridHelper = new THREE.GridHelper(gridSize, 6);
+gridHelper.setColors(0x8888d8,0x888888);
 scene.add(gridHelper);
 /*–––––––––––––––––––––––––––––––––––*/
 
 
-
 /*—–––––––––––cycle constructor—–––––––––––*/
-var createLightcycle = function(colorCode, x, z){
+var createLightcycle = function(colorCode, x, z) {
 
 	var material = new THREE.MeshLambertMaterial({
 		color: colorCode,
@@ -88,7 +170,6 @@ var lightcycle = createLightcycle(0x00ffbb,0,0);
 /*–––––––––––––––––––––––––––––––––––––––––*/
 
 
-
 /*—–––––––––––wall constructor—–––––––––––*/	
 var wall;
 var wallParent = new THREE.Object3D();
@@ -116,7 +197,6 @@ var createWall = function(colorCode) {
 /*––––––––––––––––––––––––––––––––––––––––*/
 
 
-
 /*––––––––––––––––lights––––––––––––––––––*/
 var pointLight = new THREE.PointLight(0xFFFFFF);
 var pointLight2 = new THREE.PointLight(0xFFFFFF);
@@ -125,6 +205,9 @@ pointLight2.position.set(-150, 50, -50);
 scene.add(pointLight);
 scene.add(pointLight2);
 /*––––––––––––––––––––––––––––––––––––––––*/
+
+
+
 
 
 
@@ -143,21 +226,29 @@ var i = 1;
 var lastDir;
 
 
-var easing = 0.1;
-var brakeFactor = 0.5;
-var regularSpeed = 1.0;
+var easing = 0.08;
+var friction = 0.005;
 
-var targetSpeed = 0.01;
-var playerSpeed = 0.01;
+var brakeFactor = 0.5;
+var boostFactor = 1.5;
+
+var turnSpeedFactor = 0.01;
+var regularSpeed = 1.0;
+var startingSeed = 0.75;
+
+var targetSpeed = regularSpeed;
+var playerSpeed = startingSeed;
+var lastPlayerSpeed = playerSpeed;
 
 var constrain = function(min, max) {
 	return function(n) {
     	return Math.max(min, Math.min(n, max));
 	};
 }
-var constrainSpeed = constrain(0.3, 1.0);  // min/max speed
+var constrainSpeed = constrain(0.5, 5);  // min/max speed
 
-var blastRadius = 0;
+var turnDelay = 0.2;
+var blastRadius = 1.5;
 
 
 
@@ -167,18 +258,44 @@ var spawnCycle = function() {
 	turnCoords = [];
 	lightcycle.alive = true;
 	lightcycle.position.set(0,2,0);
+	playerSpeed = startingSeed;
 	scene.add(lightcycle);
+
+
+	engineSound = playSound(bufferLoader.bufferList[0], 0.2, 1, true);
+	engineSound2 = playSound(bufferLoader.bufferList[2], 0.1, 1, true);
+	//engineOsc = oscillator('sawtooth', 0.1, 100);
+
 	document.querySelector('#press-z').style.visibility = "hidden";
-}
+};
+
+var turnCycle = {
+	left: function() {
+		
+		++i;
+		lightcycle.rotateY(halfPi);
+		if(i > 3){i = 0;}
+	},
+	right: function() {
+		
+		--i;
+		lightcycle.rotateY(-halfPi);
+		if(i < 0){i = 3;}
+	},
+};
+
+var executeTurn = function(callback) { // for stuff like turn delay, idk
+	
+	callback(); 
+	
+};
 
 
 var addTurnCoords = function () {
-
 	turnCoords.push({
 		x: lightcycle.position.x,
 		z: lightcycle.position.z
 	});
-
 	//console.log(lightcycle.position.x, lightcycle.position.z);
 	//console.log(turnCoords.length-1);
 };
@@ -190,9 +307,9 @@ var collapseWalls = function(){
 	}
 	
 	if (wallParent.scale.y <= 0) { // walls are down, set up to respawn
-		lightcycle.respawnAvailable = true;
 		wallParent.children = [];
 		wallParent.scale.y = 1;
+		lightcycle.respawnAvailable = true;
 		document.querySelector('#press-z').style.visibility = "visible";
 		RENDER_LIST.splice(RENDER_LIST.indexOf(this), 1); // clear this task
 	}
@@ -204,6 +321,12 @@ var crash = function() {
 	lightcycle.alive = false;
 	scene.remove(lightcycle);
 	wall.scale.x -= blastRadius;
+
+	explosionSound = playSound(bufferLoader.bufferList[1], 0.4, 1, false);
+	engineSound.stop();
+	engineSound2.stop();
+	//engineOsc.osc.stop();
+
 	setTimeout(function(){RENDER_LIST.push(collapseWalls)}, 1000);
 };
 
@@ -242,17 +365,13 @@ var onKeyDown = function(e) {
 		case 68:
 		case 83:
 		case 65: 	
-					++i;
-					lightcycle.rotateY(halfPi);
-					if(i > 3){i = 0;}
+					executeTurn(turnCycle.left);
 					break;
 		case 74: // right
 		case 75:
 		case 76:
 		case 186: 	
-					--i;
-					lightcycle.rotateY(-halfPi);
-					if(i < 0){i = 3;}
+					executeTurn(turnCycle.right);
 					break;
 
 		case 80: // p
@@ -273,10 +392,22 @@ var onKeyDown = function(e) {
 					break;
 		case 86: // v
 					view += 1;
-					if(view > 3){view = 0;}
+					if(view > 4){
+						if (wallParent.children[wallParent.children.length-1]) {
+							wallParent.children[wallParent.children.length-1].visible = true;
+						}
+						lightcycle.visible = true;
+						view = 0;
+					}
 					break;
-
-		case 90: // z - respawn
+		case 87: // w
+					if (!THREEx.FullScreen.activated()) {
+						THREEx.FullScreen.request();
+					} else {
+						THREEx.FullScreen.cancel();
+					}
+					break;
+		case 90: // z
 					if (lightcycle.respawnAvailable === true) {
 						spawnCycle();
 						lightcycle.respawnAvailable = false;
@@ -288,72 +419,104 @@ var onKeyDown = function(e) {
 document.addEventListener('keydown', this.onKeyDown, true);
 
 
-var targetCamera = {
-	x: -40,
-	y:  30,
-	z:  0
-};
-var cameraView = function(){
+
+var cameraView = function() {
 	
-	if (view === 0) {		
-	 // track
-		camera.lookAt( lightcycle.position );
+	if (view === 0) {
+	 // smart
+		var relativeCameraOffset = new THREE.Vector3(0,8+(10*playerSpeed*playerSpeed),0);
+		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
+		camera.position.x += (cameraOffset.x - camera.position.x) * easing/10;
+		camera.position.y += (cameraOffset.y - camera.position.y) * easing/5;
+		camera.position.z += (cameraOffset.z - camera.position.z) * easing/10;
+		camera.lookAt(lightcycle.position);
 	}
 
 	else if (view === 1) {
-	 // stationary
+	 // chase
+		var relativeCameraOffset = new THREE.Vector3(-40-(5*playerSpeed),15+(20*playerSpeed),0);
+		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
+		camera.position.x += (cameraOffset.x - camera.position.x) * easing;
+		camera.position.y += (cameraOffset.y - camera.position.y) * easing;
+		camera.position.z += (cameraOffset.z - camera.position.z) * easing;
+		camera.lookAt(lightcycle.position);
 	}
 
-	else if (view === 2) {
-	 // cockpit
-		var relativeCameraOffset = new THREE.Vector3(0,0,0);
-		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
-		//camera.position.set(cameraOffset.x, cameraOffset.y, cameraOffset.z);
-		camera.position.x += (cameraOffset.x - camera.position.x) * easing/2
-		camera.position.y += (cameraOffset.y - camera.position.y) * easing/2
-		camera.position.z += (cameraOffset.z - camera.position.z) * easing/2
-		camera.lookAt( lightcycle.position );
+	else if (view === 2) {		
+	 // track
+		camera.lookAt(lightcycle.position);
 	}
 
 	else if (view === 3) {
-	 // chase
-		var relativeCameraOffset = new THREE.Vector3(-40,30,0);
-		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
-		camera.position.x += (cameraOffset.x - camera.position.x) * easing
-		camera.position.y += (cameraOffset.y - camera.position.y) * easing
-		camera.position.z += (cameraOffset.z - camera.position.z) * easing
-		camera.lookAt( lightcycle.position );
+	 // stationary
+	}
 
+	else if (view === 4) {
+	 // cockpit
+		var relativeCameraOffset = new THREE.Vector3(-2+(2.5*playerSpeed),0,0);
+		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
+		camera.position.x += (cameraOffset.x - camera.position.x) * 0.4;
+		camera.position.y = 2;
+		camera.position.z += (cameraOffset.z - camera.position.z ) * 0.4;
+
+	 	camera.lookAt(lightcycle.position);
+
+		lightcycle.visible = false;
+		if (wallParent.children[wallParent.children.length-2]) {
+			wallParent.children[wallParent.children.length-1].visible = false;
+			wallParent.children[wallParent.children.length-2].visible = true;
+		}
 	}
 };
 
 
 var moveStuff = function() {
 
-	if (keyboard.pressed('space')) {	
-		//targetSpeed = constrainSpeed(targetSpeed -= 0.05); // brake
-		targetSpeed = brakeFactor;
+	if (keyboard.pressed('space')) {
+		targetSpeed = constrainSpeed(playerSpeed*brakeFactor);
+		friction = 0.05;
+	} else if (keyboard.pressed('b')) {
+		targetSpeed = constrainSpeed(playerSpeed*boostFactor);
+		friction = 0.05;
 	} else {
-		//targetSpeed = constrainSpeed(targetSpeed += 0.05); // accel
-		targetSpeed = regularSpeed;
+
+		targetSpeed = regularSpeed;		
+
+		if (playerSpeed > lastPlayerSpeed) { // accelerating
+
+			lastPlayerSpeed = playerSpeed;
+			friction = 0.05;
+
+		} else { // coasting
+
+			lastPlayerSpeed = playerSpeed;
+			friction = 0.005;
+		}
 	}
 
-	if (i !== lastDir) {
-		// we have turned or respawned, add new wall segment
-		lastDir = i;
-
+	if (i !== lastDir) { // we have turned or respawned, add new wall segment
+		
 	    wall = createWall(0x00ffdd);
 		wall.quaternion.copy(lightcycle.quaternion);
 		wall.position.x = lightcycle.position.x;
 		wall.position.z = lightcycle.position.z;
 		wall.scale.x = 0;
 		wallParent.add(wall);
-
-		playerSpeed = constrainSpeed(playerSpeed - 0.1);
 		addTurnCoords();
+
+		if (lastDir !== null) {
+			// playerSpeed = constrainSpeed(playerSpeed - 0.1);
+			targetSpeed = constrainSpeed(playerSpeed*turnSpeedFactor);
+			turnSound = playSound(bufferLoader.bufferList[1], 0.3, 10, false);
+			friction = 0.08;
+		}
+		
+		lastDir = i;
 	}
 
-	playerSpeed = playerSpeed + (targetSpeed - playerSpeed) * easing;
+
+	playerSpeed = playerSpeed + (targetSpeed - playerSpeed) * friction;
+
 
 	// move lightcycle
 	lightcycle.translateX( playerSpeed );
@@ -372,26 +535,40 @@ var moveStuff = function() {
 var animate = function() {
 
 	requestAnimationFrame(animate);
-	// var delta = clock.getDelta();
+	//var delta = clock.getDelta();
 	
 	if (!paused) {
 
 		if (lightcycle.alive) {
 			collisionDetection();
 			moveStuff();
+			
+			engineSound.playbackRate.value = playerSpeed;
+			engineSound2.playbackRate.value = playerSpeed * 1.15;
+			//engineOsc.osc.frequency.value = playerSpeed * 104;
 		}
 		
 		for (var r = 0; r < RENDER_LIST.length; r += 1) {
 			RENDER_LIST[r]();
 		}
-		
+
+		cameraView();
+
+	} else if (view !== 4) {
+		cameraView();
 	}
 
+	
 
-	cameraView();
+	//engineSound.panner.setPosition(lightcycle.position.x, lightcycle.position.y, lightcycle.position.z);
+	//engineSound.panner.setVelocity(lightcycle.position.x, lightcycle.position.y, lightcycle.position.z);	
+	//ctx.listener.setPosition(camera.position.x, camera.position.y, camera.position.z);
+
+
 	stats.update();
 	renderer.render(scene, camera);
 }
+
 
 
 
@@ -401,10 +578,12 @@ var startGame = function(e) {
 	if (e.keyCode === 80) {
 		document.querySelector('#welcome-msg').style.visibility = "hidden";
 		document.removeEventListener('keydown', startGame);
+		spawnCycle();
 	}
 }
 document.addEventListener('keydown', startGame);
 
-spawnCycle();
+scene.add(lightcycle);
+
 
 animate();
