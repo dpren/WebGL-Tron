@@ -83,7 +83,7 @@ b {
 	bottom: 20px;
 	left: 100px;
 	height: 3px;
-	width: 3px;
+	width: 0px;
 	background-color: rgb(0,255,0);
 }
 #rubber-gauge-min {
@@ -105,7 +105,7 @@ b {
 	bottom: 20px;
 	left: 350px;
 	height: 3px;
-	width: 3px;
+	width: 0px;
 	background-color: rgb(0,255,0);
 }
 #speed-gauge-min {

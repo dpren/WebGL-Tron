@@ -3,7 +3,9 @@ var bufferLoader = new BufferLoader(
     ctx,
     [
       "sounds/AAcyclrun.wav",
-      "sounds/AAexpl.wav"
+      "sounds/AAexpl.wav",
+      "sounds/energy.mp3",
+      "sounds/morph.mp3"
     ]
 );
 bufferLoader.load();
@@ -13,7 +15,7 @@ bufferLoader.load();
 var cycleSounds = ctx.createGain();
 cycleSounds.gain.value = 1;
 cycleSounds.panner = ctx.createPanner();
-cycleSounds.panner.panningModel = "equalpower" // "HRTF" realism, "equalpower" performance
+cycleSounds.panner.panningModel = "equalpower"; // "HRTF" realism, "equalpower" performance
 
 cycleSounds.connect(cycleSounds.panner);
 cycleSounds.panner.connect(ctx.destination);
@@ -42,3 +44,5 @@ var playSound = function(buffer, vol, pitch, loop) {
 var engineSound;
 var explosionSound;
 var turnSound;
+var bounceSound;
+var morphSound;
