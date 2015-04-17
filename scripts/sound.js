@@ -11,7 +11,7 @@ bufferLoader.load();
 
 
 var cycleSounds = ctx.createGain();
-cycleSounds.gain.value = 2;
+cycleSounds.gain.value = 1;
 cycleSounds.panner = ctx.createPanner();
 cycleSounds.panner.panningModel = "equalpower" // "HRTF" realism, "equalpower" performance
 

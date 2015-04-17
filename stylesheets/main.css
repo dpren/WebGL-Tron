@@ -10,8 +10,9 @@
 
 * {
 	margin: 0;
-	font-weight: 300;
 	-webkit-font-smoothing: antialiased;
+	font-weight: 300;
+	font-family:  fontawesome, sans-serif;
 }
 
 html {
@@ -45,7 +46,6 @@ b {
 	opacity: 0.4;
 }
 
-
 #welcome-msg {
 	position: absolute;
 	width: 100%;	
@@ -58,7 +58,7 @@ b {
 
 #promptbox {
 	position: absolute;
-	color: white;
+	color: #ffffff;
 	opacity: 0.85;
 	font-family:  nicefont, sans-serif;
 	letter-spacing: 4px;
@@ -67,3 +67,56 @@ b {
 	width: 100%;
 }
 
+
+
+
+.gauge-values {
+	position: absolute;
+	color: #ffffff;
+	opacity: 0.85;
+	font-size: 10px;
+}
+
+
+#rubber-gauge {
+	position: absolute;
+	bottom: 20px;
+	left: 100px;
+	height: 3px;
+	width: 3px;
+	background-color: rgb(0,255,0);
+}
+#rubber-gauge-min {
+	left: 100px;
+	bottom: 5px;
+}
+#rubber-label {
+	left: 155px;
+	bottom: 5px;
+}
+#rubber-gauge-max {
+	left: 245px;
+	bottom: 5px;
+}
+
+
+#speed-gauge {
+	position: absolute;
+	bottom: 20px;
+	left: 350px;
+	height: 3px;
+	width: 3px;
+	background-color: rgb(0,255,0);
+}
+#speed-gauge-min {
+	left: 350px;
+	bottom: 5px;
+}
+#speed-label {
+	left: 405px;
+	bottom: 5px;
+}
+#speed-gauge-max {
+	left: 495px;
+	bottom: 5px;
+}

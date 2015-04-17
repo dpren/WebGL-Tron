@@ -1,7 +1,9 @@
 var keyboard = new THREEx.KeyboardState();
 var clock = new THREE.Clock();
-var halfPi = Math.PI/2;
+var time;
+var delta;
 
+var halfPi = Math.PI/2;
 
 //setup
 //var init = function () {
@@ -19,7 +21,7 @@ var halfPi = Math.PI/2;
 		cameraControls.maxDistance = 400;
 
 
-	var resizeWindow = function() {
+	var resizeWindow = function () {
 		camera.aspect = window.innerWidth/window.innerHeight;
 		camera.updateProjectionMatrix();
 		renderer.setSize( window.innerWidth, window.innerHeight );
@@ -31,70 +33,201 @@ var halfPi = Math.PI/2;
 	var stats = new Stats();
 		stats.domElement.style.position = 'absolute';
 		stats.domElement.style.top = '0px';
+		stats.domElement.style.visibility="hidden";
 		document.body.appendChild( stats.domElement );
 
 
 
 
+	//var bar = document.createElement( 'span' );
+	//bar.style.cssText = 'background-color:#0f0';
+	//bar.id = "speedbar";
+	//document.body.appendChild(bar);
+	
+	var rubberGauge = document.querySelector('#rubber-gauge');
+	var speedGauge = document.querySelector('#speed-gauge');
 
 
+
+
+
+
+var RENDER_LIST = []; // push crap into this to get it animated
+
+
+var turnCoords = [];
+
+
+var paused = true;
+var showInfo = true;
+var view = 3;
+
+var dir = 1; // cycle direction
+var lastDir = undefined;
+
+var maxTailLength = 800;
+
+var easing = 0.08;
+var friction = 0.005;
+
+var turnDelay = 0.12;
+
+var rubber = 0;
+var rubberDrainFactor = 10; // higher is slower
+var rubberFillFactor = 0.02;
+var rubberDistance = 3;
+
+var collision = false;
+var collisionWall = undefined; // test
+var blastRadius = 1.5;
+
+var wallAccel = false;
 var wallAccelRange = 15;
+var wallAccelAmount;
+
+var brakeFactor = 0.5;
+var boostFactor = 1.5;
+var turnSpeedFactor = 0.01;
+
+var regularSpeed = 1.0;
+var startingSpeed = 0.75;
+var targetSpeed = regularSpeed;
+var playerSpeed = startingSpeed;
+var lastPlayerSpeed = playerSpeed;
+
+var constrain = function (min, max) {
+	return function (n) {
+    	return Math.max(min, Math.min(n, max));
+	};
+};
+var constrainSpeed = constrain(0.7, 5);  // min/max speed
 
 
 
-/*—––––––––––––line grid—––––––––––––*/
+
+
+
+
+
+
+
+
+
+
+/*—–––––––––––––helper stuff—––––––––––––––*/
+var yellowMaterial = new THREE.MeshBasicMaterial({
+		color: 0xffff00,
+		wireframe: true,
+		wireframeLinewidth: 1
+	});
+
+var indicatorGeo = new THREE.TetrahedronGeometry(1, 0);
+
+var indicator = new THREE.Mesh( indicatorGeo, yellowMaterial );
+	indicator.position.set(0,5,0);
+
+var animateIndicator = function () {
+	indicator.rotation.y += 0.05;
+	indicator.rotation.z += 0.02;
+};
+
+var lineMaterial = new THREE.LineBasicMaterial({color: 0xff00ff,linewidth:2});
+
+var bounds = new THREE.Geometry();
+	bounds.vertices.push(new THREE.Vector3(0, 0, -wallAccelRange));
+	bounds.vertices.push(new THREE.Vector3(0, 0, wallAccelRange));
+var accelBoundingLine = new THREE.Line(bounds, lineMaterial);
+
+var lookAhead = new THREE.Geometry();
+	lookAhead.vertices.push(new THREE.Vector3(0, 0, 0));
+	lookAhead.vertices.push(new THREE.Vector3(0, 5, 0));
+var lookAheadLine = new THREE.Line(lookAhead, lineMaterial);
+
+var lookAhead2 = new THREE.Geometry();
+	lookAhead.vertices.push(new THREE.Vector3(0, 0, 0));
+	lookAhead.vertices.push(new THREE.Vector3(0, 5, 0));
+var lookAheadLine2 = new THREE.Line(lookAhead, lineMaterial);
+
+/*––––––––––––––––––––––––––––––––––––––––*/
+
+
+/*—–––––––––––––––line grid—–––––––––––––––*/
 var gridSize = 240;
 var gridHelper = new THREE.GridHelper(gridSize, 6);
 gridHelper.setColors(0x8888d8,0x888888);
 scene.add(gridHelper);
-/*–––––––––––––––––––––––––––––––––––*/
+/*–––––––––––––––––––––––––––––––––––––––––*/
 
 
 /*—–––––––––––cycle constructor—–––––––––––*/
-var createLightcycle = function(colorCode, x, z) {
+var createLightcycle = function (colorCode, x, z) {
 
-	var material = new THREE.MeshLambertMaterial({
+	var cycleMaterial = new THREE.MeshPhongMaterial({
 		color: colorCode,
 		transparent: true,
-		opacity: 0.8
+		opacity: 0.7
+	});
+	var cycleBodyMaterial = new THREE.MeshPhongMaterial({
+		color: colorCode,
+		transparent: true,
+		opacity: 0.7
+	});
+	var engMaterial = new THREE.MeshBasicMaterial({
+		color: 0xffff00,
+		wireframe: true,
+		wireframeLinewidth: 2
 	});
 
-	var cube = new THREE.Mesh(new THREE.BoxGeometry(4,4,2), material);
+	//var prismPoints = [];
+	// prismPoints.push( new THREE.Vector2 (  0,  4 ));
+	// prismPoints.push( new THREE.Vector2 (  0,  0  ));
+	// prismPoints.push( new THREE.Vector2 (  4,  0));
+	// var prism = new THREE.Shape(prismPoints);
+	// var extrusionSettings = {
+	// 	amount: 1,
+	// 	bevelEnabled: false,
+	// };
+	// var bodyPrism = new THREE.ExtrudeGeometry( prism, extrusionSettings );
+	// var body = new THREE.Mesh( bodyPrism, cycleMaterial );
+	// 	body.position.set(0,-2,-0.5);
 
-	var bcylinder = new THREE.CylinderGeometry(2, 2, 3, 16);
-	var bwheel = new THREE.Mesh( bcylinder, material );
+	var cube = new THREE.Mesh(new THREE.BoxGeometry(4,4,2), cycleBodyMaterial);
+
+	var bcylinder = new THREE.CylinderGeometry(2, 2, 3, 8);
+	var bwheel = new THREE.Mesh( bcylinder, cycleMaterial );
 		bwheel.position.set(-1.5,0,0);
 		bwheel.rotateX(halfPi);
+		scene.add(bwheel);
+	var bwheelWire = new THREE.Mesh( bcylinder, engMaterial );
+		bwheelWire.position.set(-1.5,0,0);
+		bwheelWire.rotateX(halfPi);
+		scene.add(bwheelWire);
 
-	var fcylinder = new THREE.CylinderGeometry(0.7, 0.7, .5, 16);
-	var fwheel = new THREE.Mesh( fcylinder, material );
+	var fcylinder = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 8);
+	var fwheel = new THREE.Mesh( fcylinder, cycleMaterial );
 		fwheel.position.set(2,-1.3,0);
 		fwheel.rotateX(halfPi);
+		scene.add(fwheel);
+	var fwheelWire = new THREE.Mesh( fcylinder, engMaterial );
+		fwheelWire.position.set(2,-1.3,0);
+		fwheelWire.rotateX(halfPi);
+		scene.add(fwheelWire);
 
-	// var yellowMaterial = new THREE.MeshLambertMaterial({
-	// 	color: 0xffff00,
-	// 	transparent: true,
-	// 	opacity: 0.8
-	// });
-	// var indg = new THREE.BoxGeometry(0.5, 0.5, 0.8);
-	// var indicator = new THREE.Mesh( indg, yellowMaterial );
-	// 	indicator.position.set(0,5,0);
-	// 	indicator.rotateX(halfPi);
 
-	var lineMaterial = new THREE.LineBasicMaterial({
-        color: 0xff00ff
-    });
-	var bounds = new THREE.Geometry();
-		bounds.vertices.push(new THREE.Vector3(0, 0, -wallAccelRange));
-    	bounds.vertices.push(new THREE.Vector3(0, 0, wallAccelRange));
-    var boundsLine = new THREE.Line(bounds, lineMaterial);
+	var ecylinder = new THREE.CylinderGeometry(0.5, 0.5, 2.5, 5);
+	var eng = new THREE.Mesh( ecylinder, engMaterial );
+		eng.position.set(-0.2,-1,0);
+		eng.rotateZ(halfPi);
+		scene.add(eng);
 
 	// ye olde light-tractor
 	var cycle = new THREE.Object3D();
 		cycle.add(cube);
+		cycle.add(eng);
 		cycle.add(bwheel);
+		cycle.add(bwheelWire);
 		cycle.add(fwheel);
-		cycle.add(boundsLine);
+		cycle.add(fwheelWire);
 		cycle.position.set(x,2,z);
 		
 		cycle.alive = true;
@@ -105,6 +238,12 @@ var createLightcycle = function(colorCode, x, z) {
 };
 
 var lightcycle = createLightcycle(0x00ffbb,0,0);
+var animateEng = function () {
+	lightcycle.children[1].rotation.x += playerSpeed/3;
+	lightcycle.children[3].rotation.y -= playerSpeed/3.2;
+	lightcycle.children[5].rotation.y -= playerSpeed/2;
+};
+RENDER_LIST.push(animateEng);
 /*–––––––––––––––––––––––––––––––––––––––––*/
 
 
@@ -114,7 +253,7 @@ var wallParent = new THREE.Object3D();
 wallParent.netLength = 0;
 scene.add(wallParent);
 
-var createWall = function(colorCode) {
+var createWall = function (colorCode) {
 
 	var wallMaterial = new THREE.MeshBasicMaterial({
 		//map: THREE.ImageUtils.loadTexture('images/texture.png'),
@@ -151,54 +290,17 @@ scene.add(pointLight2);
 
 
 
-var RENDER_LIST = []; // push crap into this to get it animated
-
-
-var turnCoords = [];
-
-
-var paused = true;
-var showStats = true
-var view = 3;
-
-var dir = 1; // cycle direction
-var lastDir;
-
-var maxTailLength = 600;
-
-var easing = 0.08;
-var friction = 0.005;
-
-var wallAccel = false;
-var wallAccelAmount = 0;
-
-var brakeFactor = 0.5;
-var boostFactor = 1.5;
-var turnSpeedFactor = 0.01;
-
-var regularSpeed = 1.0;
-var startingSpeed = 0.75;
-var targetSpeed = regularSpeed;
-var playerSpeed = startingSpeed;
-var lastPlayerSpeed = playerSpeed;
-
-var constrain = function(min, max) {
-	return function(n) {
-    	return Math.max(min, Math.min(n, max));
-	};
-}
-var constrainSpeed = constrain(0.7, 5);  // min/max speed
-
-var turnDelay = 0.2;
-var blastRadius = 1.5;
 
 
 
-
-var spawnCycle = function() {
-	lastDir = null; // for turn detection
+var spawnCycle = function () {
+	lastDir = undefined; // for turn detection
 	turnCoords = [];
 	wallParent.netLength = 0;
+	rubber = 0;
+
+	collision = false;
+	collisionWall = undefined;
 	lightcycle.alive = true;
 	lightcycle.position.set(0,2,0);
 	playerSpeed = startingSpeed;
@@ -209,22 +311,20 @@ var spawnCycle = function() {
 	document.querySelector('#press-z').style.visibility = "hidden";
 };
 
-var turnCycle = {
-	left: function() {
-		++dir;
-		lightcycle.rotateY(halfPi);
-		if(dir > 3){dir = 0;}
-	},
-	right: function() {
-		--dir;
-		lightcycle.rotateY(-halfPi);
-		if(dir < 0){dir = 3;}
-	},
+
+var turnLeft = function () {
+	++dir;
+	lightcycle.rotateY(halfPi);
+	if(dir > 3){dir = 0;}
+};
+var turnRight = function () {
+	--dir;
+	lightcycle.rotateY(-halfPi);
+	if(dir < 0){dir = 3;}
 };
 
-var executeTurn = function(callback) { // for stuff like turn delay, idk
-	callback(); 
-};
+
+
 
 var addTurnCoords = function (d) {
 	turnCoords.push({
@@ -232,13 +332,11 @@ var addTurnCoords = function (d) {
 		z: lightcycle.position.z,
 		dir: d
 	});
-	//console.log(lightcycle.position.x, lightcycle.position.z);
-	//console.log(turnCoords.length-1);
 };
 
 
-var collapseWalls = function(){
-	if (lightcycle.alive === false){
+var collapseWalls = function () {
+	if (lightcycle.alive === false) {
 		wallParent.scale.y -= 0.05; // lower walls
 	}
 	
@@ -251,136 +349,215 @@ var collapseWalls = function(){
 	}
 };
 
-var crash = function() {
+
+var crash = function () {
 	targetSpeed = 0;
 	playerSpeed = 0;
 	lightcycle.alive = false;
 	scene.remove(lightcycle);
-	//wall.scale.x -= blastRadius;
+	wall.scale.x -= blastRadius;
 
 	explosionSound = playSound(bufferLoader.bufferList[1], 1.0, 1, false);
 	engineSound.stop();
 
-	setTimeout(function(){RENDER_LIST.push(collapseWalls)}, 1000);
+	setTimeout(function(){
+		RENDER_LIST.push(collapseWalls);
+	}, 1000);
 };
 
 
-var ghettoAI = function() {
-	if (Math.random() > 0.5) { 
-		turnCycle.left();
-	} else {
-		turnCycle.right();
-	}
-};
-
-var collisionDetection = function() {
+var handleRubber = function () {
 	
-	if (lightcycle.position.x >= gridSize || lightcycle.position.x <= -gridSize ||
-		lightcycle.position.z >= gridSize || lightcycle.position.z <= -gridSize) {
-		crash();
-		return;
-	} else {
-
-
-		for (var w = 2; w < turnCoords.length; w += 1) {
-
-			if (doLineSegmentsIntersect(
-										turnCoords[turnCoords.length-1],
-										lightcycle.position,
-										turnCoords[w-2],
-										turnCoords[w-1]
-										)
-				=== true ) {
-
-				crash();
-				return;
-			}
-		}	
+	if (collision) {
 		
+		rubber =  Math.min(5, rubber += playerSpeed/rubberDrainFactor);	
 
-		var cycleLeft = lightcycle.clone().translateZ( -wallAccelRange );
-		var cycleRight = lightcycle.clone().translateZ( wallAccelRange );
+	} else if (rubber >= 0) {
 
-		for (var w = 2; w < turnCoords.length; w += 1) {
-
-			var accelIntersect = doAccelLineSegmentsIntersect(
-										cycleLeft.position,
-										cycleRight.position,
-										turnCoords[w-2],
-										turnCoords[w-1]
-										);
-			if ( accelIntersect.check === true ) {
-
-				wallAccelAmount = ((wallAccelRange - accelIntersect.pointDist)/150)+1;
-
-				wallAccel = true;
-				return;
-			}
+		rubber = Math.max(0, rubber -= rubberFillFactor);
+		
+		if (showInfo && collisionWall !== undefined) {
+			wallParent.children[collisionWall].material.color.r = 0; collisionWall = undefined; // de-illuminate collisionWall
 		}
-		wallAccelAmount = 0;
-		wallAccel = false;
+
 	}
+
+	rubberGauge.style.width = (rubber*30) + 'px';
+	rubberGauge.style.backgroundColor = 'rgb('+ Math.floor(rubber*50) +','+ (255-Math.floor(rubber*rubber*rubber*2)) +', 0)';
 	
-	// if (lightcycle.autoPilot) {
-	// 	var cycleTrajectory = lightcycle.clone().translateX( 5 );
-	// 	if (cycleTrajectory.position.x >= gridSize || cycleTrajectory.position.x <= -gridSize ||
-	//  		cycleTrajectory.position.z >= gridSize || cycleTrajectory.position.z <= -gridSize) {
-	// 		ghettoAI();
-	// 		return;
-	// 	} else {
-	// 		for (var w = 2; w < turnCoords.length; w += 1) {
-	// 			if (
-	// 				doLineSegmentsIntersect(
-	// 										turnCoords[turnCoords.length-1],
-	// 										cycleTrajectory.position,
-	// 										turnCoords[w-2],
-	// 										turnCoords[w-1]
-	// 										)
-	// 				=== true ){
-	// 				ghettoAI();
-	// 				return;
-	// 			}
-	// 		}
-	// 	}
-	// }
+	lightcycle.children[0].material.color.r = rubber/5;
+	lightcycle.children[1].material.color.r = rubber/5;
+	lightcycle.children[1].material.color.g = 1-rubber/5;
+	lightcycle.children[1].material.color.b = 1-rubber/5;
 };
 
 
-var onKeyDown = function(e) {
+var handleCollision = function () {
+	if (rubber >= 5) {
+		crash();
+	}
+};
+
+var wn;
+var wallCheck = function () {
+	
+	var cycleTrajectory = lightcycle.clone().translateX( rubberDistance );
+
+
+	
+	var length = turnCoords.length;
+	var intersect;
+
+	collision = false; // false unless collision is detected
+
+	for (wn = 2; wn < length; wn += 1) {
+
+		intersect = doLineSegmentsIntersect(
+									turnCoords[length-1],
+									cycleTrajectory.position,
+									turnCoords[wn-2],
+									turnCoords[wn-1]
+									);
+
+		if (intersect === true) {
+
+			handleCollision();
+			collision = true;
+			collisionWall = wn-2;
+			if (showInfo) wallParent.children[collisionWall].material.color.r = 1; // highlight this wall
+			//return true;
+		}
+	}
+
+	if (Math.abs(cycleTrajectory.position.x) >= gridSize || Math.abs(cycleTrajectory.position.z) >= gridSize) {
+		
+		handleCollision();
+		collision = true;
+		//return true;
+	}
+
+	return collision;
+};
+
+
+var wallAccelCheck = function () {
+	
+	var cycleLeft = lightcycle.clone().translateZ( -wallAccelRange );
+	var cycleRight = lightcycle.clone().translateZ( wallAccelRange );
+	
+	var accelIntersect;
+	var length = turnCoords.length;
+	for (var w = 2; w < length; w += 1) {
+
+		accelIntersect = doAccelLineSegmentsIntersect(
+									cycleLeft.position,
+									cycleRight.position,
+									turnCoords[w-2],
+									turnCoords[w-1]
+									);
+		
+		if (accelIntersect.check === true) {
+
+			wallAccelAmount = ((wallAccelRange - accelIntersect.pointDist)/120)+1;
+			wallAccel = true;
+			return true; // possibly skips walls
+		}
+	}
+	wallAccelAmount = 0;
+	wallAccel = false;
+};
+
+
+// var ghettoAI = function () {
+// 	if (Math.random() > 0.5) { 
+// 		turnLeft();
+// 	} else {
+// 		turnRight();
+// 	}
+// };
+
+// var autopilotWallCheck = function () {	
+// 	var cycleTrajectory = lightcycle.clone().translateX( 5 ); // how far ahead to check
+// 	var length = turnCoords.length;
+// 	for (var w = 2; w < length; w += 1) {
+// 		if (
+// 			doLineSegmentsIntersect(
+// 									turnCoords[length-1],
+// 									cycleTrajectory.position,
+// 									turnCoords[w-2],
+// 									turnCoords[w-1]
+// 									)
+// 			=== true ){
+// 			ghettoAI();
+// 			return;
+// 		}
+// 	}
+// 	if (Math.abs(cycleTrajectory.position.x) >= gridSize || Math.abs(cycleTrajectory.position.z) >= gridSize){
+// 		ghettoAI();
+// 		return;
+// 	}
+// };
+
+// var collisionDetection = function () {
+// 	if (wallCheck()) {
+// 		return;
+// 	}
+// 	if (wallAccelCheck()) {
+// 		return;
+// 	}
+// 	// if (lightcycle.autoPilot) {
+// 	// 	autopilotWallCheck;
+// 	// }
+// };
+
+
+var onKeyDown = function (e) {
 	switch ( e.keyCode ) {
 		case 70: // left
 		case 68:
 		case 83:
 		case 65: 	
-					executeTurn(turnCycle.left);
+					//executeTurn(turnLeft);
+					turnStack.push(turnLeft);
 					break;
 		case 74: // right
 		case 75:
 		case 76:
 		case 186: 	
-					executeTurn(turnCycle.right);
+					//executeTurn(turnRight);
+					turnStack.push(turnRight);
 					break;
 
 		case 80: // p
 					paused = !paused;
-					if (!paused) {
+					if (paused === false) {
 						document.querySelector('#pause-msg').style.visibility="hidden";
 						if (view !== 4) {
-							cycleSounds.gain.value = 12;
+							cycleSounds.gain.value = 8;
 						} else {
-							cycleSounds.gain.value = 1;
+							cycleSounds.gain.value = 0;
 						}
 					} else {
 						document.querySelector('#pause-msg').style.visibility="visible";
 						cycleSounds.gain.value = 0;
 					}
 					break;
-		case 73: // dir
-					showStats = !showStats;
-					if (showStats) {
+		case 73: // i
+					showInfo = !showInfo;
+					if (showInfo) {
 						stats.domElement.style.visibility="visible";
+						scene.add(lookAheadLine);
+						scene.add(lookAheadLine2);
+						lightcycle.add(accelBoundingLine);
 					} else {
 						stats.domElement.style.visibility="hidden";
+						scene.remove(lookAheadLine);
+						scene.remove(lookAheadLine2);
+						lightcycle.remove(accelBoundingLine);
+						if (collisionWall !== 	d && lightcycle.alive) {
+							wallParent.children[collisionWall].material.color.r = 0; // de-illuminate collisionWall
+							collisionWall = undefined;
+						}
 					}
 					break;
 		case 86: // v
@@ -390,16 +567,14 @@ var onKeyDown = function(e) {
 							wallParent.children[wallParent.children.length-1].visible = true;
 						}
 						lightcycle.visible = true;
+						if (paused === false) setTimeout(function(){cycleSounds.gain.value = 8;}, 150);
 						view = 0;
-					}
-					if (view !== 4) {
-						cycleSounds.gain.value = 12;
-					} else {
-						cycleSounds.gain.value = 1;
+					} else if (view === 4) {
+						if (paused === false) cycleSounds.gain.value = 1;
 					}
 					break;
 		case 87: // w
-					if (!THREEx.FullScreen.activated()) {
+					if (THREEx.FullScreen.activated() === false) {
 						THREEx.FullScreen.request();
 					} else {
 						THREEx.FullScreen.cancel();
@@ -411,22 +586,31 @@ var onKeyDown = function(e) {
 						lightcycle.respawnAvailable = false;
 					}
 					break;
-		case 20: // caps
-						lightcycle.autoPilot = !lightcycle.autoPilot;
+		case 192: // ~`
+					lightcycle.autoPilot = !lightcycle.autoPilot;
+					if (lightcycle.autoPilot) {
+						lightcycle.add(indicator);
+						RENDER_LIST.push(animateIndicator);
+					} else {
+						lightcycle.remove(indicator);
+						RENDER_LIST.splice(RENDER_LIST.indexOf(animateIndicator), 1);
+					}
 					break;
     }
 };
 
-document.addEventListener('keydown', this.onKeyDown, true);
+document.addEventListener('keydown', onKeyDown, true);
 
 
 
-var cameraView = function() {
-	
+var cameraView = function () {
+	var relativeCameraOffset;
+	var cameraOffset;
+
 	if (view === 0) {
 	 // smart
-		var relativeCameraOffset = new THREE.Vector3(0,8+(10*playerSpeed*playerSpeed),0);
-		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
+		relativeCameraOffset = new THREE.Vector3(0,8+(10*playerSpeed*playerSpeed),0);
+		cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
 		camera.position.x += (cameraOffset.x - camera.position.x) * easing/10;
 		camera.position.y += (cameraOffset.y - camera.position.y) * easing/5;
 		camera.position.z += (cameraOffset.z - camera.position.z) * easing/10;
@@ -435,8 +619,8 @@ var cameraView = function() {
 
 	else if (view === 1) {
 	 // chase
-		var relativeCameraOffset = new THREE.Vector3(-40-(5*playerSpeed),15+(20*playerSpeed),0);
-		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
+		relativeCameraOffset = new THREE.Vector3(-40-(5*playerSpeed),15+(20*playerSpeed),0);
+		cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
 		camera.position.x += (cameraOffset.x - camera.position.x) * easing;
 		camera.position.y += (cameraOffset.y - camera.position.y) * easing;
 		camera.position.z += (cameraOffset.z - camera.position.z) * easing;
@@ -454,8 +638,8 @@ var cameraView = function() {
 
 	else if (view === 4) {
 	 // cockpit
-		var relativeCameraOffset = new THREE.Vector3(-2+(2.5*playerSpeed),0,0);
-		var cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
+		relativeCameraOffset = new THREE.Vector3(-2+(2.5*playerSpeed),0,0);
+		cameraOffset = relativeCameraOffset.applyMatrix4( lightcycle.matrixWorld );
 		camera.position.x += (cameraOffset.x - camera.position.x) * 0.5;
 		camera.position.y = 2;
 		camera.position.z += (cameraOffset.z - camera.position.z ) * 0.5;
@@ -472,13 +656,12 @@ var cameraView = function() {
 };
 
 
-var moveStuff = function() {
-
+var changeVelocity = function () {
 
 	if (keyboard.pressed('space')) {
 
 		targetSpeed = constrainSpeed(playerSpeed*brakeFactor);
-		friction = 0.05;
+		friction = 0.03;
 
 	} else if (keyboard.pressed('b')) {
 
@@ -488,6 +671,7 @@ var moveStuff = function() {
 	} else if (wallAccel) {
 
 		targetSpeed = Math.max(regularSpeed+0.2, playerSpeed*wallAccelAmount);
+		friction = 0.05;
 
 	} else {
 
@@ -508,16 +692,16 @@ var moveStuff = function() {
 
 
 	if (dir !== lastDir) { // we have turned or respawned
-		
+
 	    wall = createWall(0x00ffdd);
 		wall.quaternion.copy(lightcycle.quaternion);
 		wall.position.x = lightcycle.position.x;
 		wall.position.z = lightcycle.position.z;
-		wall.scale.x = 0;
+		wall.scale.x = 0.0001;
 		wallParent.add(wall);
 		addTurnCoords(dir);
 
-		if (lastDir !== null) { // skip respawn
+		if (lastDir !== undefined) { // skip respawn
 			
 			turnSound = playSound(bufferLoader.bufferList[1], 0.7, 10, false);
 
@@ -528,48 +712,55 @@ var moveStuff = function() {
 		lastDir = dir;
 	}
 
-
 	playerSpeed = playerSpeed + (targetSpeed - playerSpeed) * friction;
 
-	lightcycle.translateX( playerSpeed );  // move lightcycle
-
-	wall.scale.x += playerSpeed;  // grow current wall
-	wallParent.netLength += playerSpeed;
-
-	if (wallParent.netLength > maxTailLength) {
-
-		wallParent.children[0].scale.x -= playerSpeed; // shrink wrong side of last wall
-		wallParent.children[0].translateX( playerSpeed ); // re-connect last wall
-		
-		wallParent.netLength -= playerSpeed;
+	speedGauge.style.width = (playerSpeed*30) + 'px';
+	speedGauge.style.backgroundColor = 'rgb('+ Math.floor(playerSpeed*50) +','+ (255-Math.floor(playerSpeed*playerSpeed*playerSpeed*2)) +', 0)';
+};
 
 
-		if (turnCoords[0].dir === 0) {
-			turnCoords[0].z += playerSpeed;
-		}
-		else if (turnCoords[0].dir === 1) {
-			turnCoords[0].x += playerSpeed;
-		}
-		else if (turnCoords[0].dir === 2) {
-			turnCoords[0].z -= playerSpeed;
-		}
-		else if (turnCoords[0].dir === 3) {
-			turnCoords[0].x -= playerSpeed;
-		}
-
-
-		if (wallParent.children[0].scale.x <= 0 && wallParent.children.length > 0) {
-			wallParent.remove(wallParent.children[0]);
-			turnCoords.splice(0,1)
-		}
-	}
+var moveStuff = function () {
 	
-	return;
+	//if (collision === false) {
+
+		lightcycle.translateX( playerSpeed );  // move lightcycle
+
+		wall.scale.x += playerSpeed;  // grow current wall
+		wallParent.netLength += playerSpeed;
+
+		if (wallParent.netLength > maxTailLength) {
+
+			wallParent.children[0].scale.x -= playerSpeed; // shrink wrong side of last wall
+			wallParent.children[0].translateX( playerSpeed ); // re-connect last wall
+			
+			wallParent.netLength -= playerSpeed;
+
+
+			if (turnCoords[0].dir === 0) {
+				turnCoords[0].z += playerSpeed;
+			}
+			else if (turnCoords[0].dir === 1) {
+				turnCoords[0].x += playerSpeed;
+			}
+			else if (turnCoords[0].dir === 2) {
+				turnCoords[0].z -= playerSpeed;
+			}
+			else if (turnCoords[0].dir === 3) {
+				turnCoords[0].x -= playerSpeed;
+			}
+
+
+			if (wallParent.children[0].scale.x <= 0 && wallParent.children.length > 0) {
+				wallParent.remove(wallParent.children[0]);
+				turnCoords.splice(0,1);
+			}
+		}
+	//}
 };
 
 
 
-var audioMixing = function() {
+var audioMixing = function () {
 
 	engineSound.playbackRate.value = playerSpeed;
 
@@ -596,20 +787,44 @@ var audioMixing = function() {
 
 
 
+var lastTime = 0;
+var turnStack = [];
+var cnst = constrain(0, 1);
 
-var animate = function() {
+var executeTurn = function (callback) {
+	
+	if (turnStack.length > 0) {
+		if ((time - lastTime) > turnDelay) {
+			var shifted = turnStack.shift();
+			shifted();
+			lastTime = time;
+		}
+	}
+
+};
+
+var animate = function () {
 
 	requestAnimationFrame(animate);
-	//var delta = clock.getDelta();
+	time = clock.getElapsedTime();
+ 	//delta = clock.getDelta();
 	
-	if (!paused) {
+	if (paused === false) {
 
 		if (lightcycle.alive) {
-			moveStuff();
-			collisionDetection();
+			executeTurn();
+			changeVelocity();
+			// collision check AFTER turn
+			wallCheck();
+			wallAccelCheck();
+			if (collision === false) {
+				moveStuff();
+			}
+			handleRubber();
 		}
 		
-		for (var r = 0; r < RENDER_LIST.length; r += 1) {
+		var RL = RENDER_LIST.length;
+		for (var r = 0; r < RL; r += 1) {
 			RENDER_LIST[r]();
 		}
 		
@@ -630,13 +845,14 @@ var animate = function() {
 
 
 
-var startGame = function(e) {
+var startGame = function (e) {
 	if (e.keyCode === 80) {
 		document.querySelector('#welcome-msg').style.visibility = "hidden";
 		document.removeEventListener('keydown', startGame);
 		spawnCycle();
+		audioMixing();
 	}
-}
+};
 document.addEventListener('keydown', startGame);
 
 scene.add(lightcycle);
