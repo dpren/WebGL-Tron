@@ -64,7 +64,7 @@ var maxTailLength = 800;
 var easing = 0.08;
 var friction = 0.005;
 
-var turnDelay = 0.11; // seconds
+var turnDelay = 0.01; // seconds
 
 var rubber = 0;
 var rubberDistance = 3;
@@ -72,7 +72,6 @@ var rubberDrainFactor = 5; // lower drains faster
 var rubberFillFactor = 0.03; // higher refills faster
 
 var collision = false;
-var collisionWall = undefined; // test
 var blastRadius = 1.5;
 
 var wallAccel = false;
@@ -148,7 +147,7 @@ var lookAheadLine2 = new THREE.Line(lookAhead, lineMaterial);
 /*—–––––––––––––––line grid—–––––––––––––––*/
 var gridSize = 240;
 var gridHelper = new THREE.GridHelper(gridSize, 6);
-gridHelper.setColors(0x8888d8,0x888888);
+gridHelper.setColors(0x777777,0x777777);
 scene.add(gridHelper);
 /*–––––––––––––––––––––––––––––––––––––––––*/
 
@@ -222,7 +221,9 @@ var createLightcycle = function (colorCode, x, z) {
 var lightcycle = createLightcycle(0x00ffbb,0,0);
 var animateEng = function () {
 	lightcycle.children[1].rotation.x += playerSpeed/3;
-	lightcycle.children[3].rotation.y -= playerSpeed/3.2;
+	lightcycle.children[2].rotation.y -= playerSpeed/3.2;
+	//lightcycle.children[3].rotation.y -= playerSpeed/3.2;
+	//lightcycle.children[4].rotation.y -= playerSpeed/2;
 	lightcycle.children[5].rotation.y -= playerSpeed/2;
 };
 RENDER_LIST.push(animateEng);
@@ -234,23 +235,31 @@ var wall;
 var wallParent = new THREE.Object3D();
 wallParent.netLength = 0;
 scene.add(wallParent);
+var wallTextureProportion;
+
 
 var createWall = function (colorCode) {
 
-	var wallMaterial = new THREE.MeshBasicMaterial({
-		//map: THREE.ImageUtils.loadTexture('images/texture.png'),
+	var texture = THREE.ImageUtils.loadTexture('images/dir_wall.png');
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.needsUpdate = true;
+		wallTextureProportion = (texture.image.width / texture.image.height) * 8; // *4 is actual size
+
+	var wallMaterial = new THREE.MeshLambertMaterial({
+		map: texture,
 		color: colorCode,
-		side: THREE.DoubleSide,
 		blending: THREE.AdditiveBlending,
-		opacity: 0.6,
+		opacity: 1,
 		transparent: true
 	});
 
-	var wallGeometry = new THREE.PlaneBufferGeometry( 1, 4 );
-	var m = new THREE.Matrix4();
-		m.makeRotationX(halfPi);
-		m.makeTranslation( 0.5, 2, 0 );
-		wallGeometry.applyMatrix( m );
+	var wallGeometry = new THREE.BoxGeometry( 1, 0.1, 4 );
+
+		wallGeometry.faceVertexUvs[0][4] = [new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 0)];
+		wallGeometry.faceVertexUvs[0][5] = [new THREE.Vector2(0, 1), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)];		
+		wallGeometry.applyMatrix( new THREE.Matrix4().makeRotationX(-halfPi) );
+		wallGeometry.applyMatrix( new THREE.Matrix4().makeTranslation( 0.5, 2, 0 ) );
+
 
 	return new THREE.Mesh(wallGeometry, wallMaterial);
 };
@@ -258,38 +267,34 @@ var createWall = function (colorCode) {
 
 
 /*––––––––––––––––lights––––––––––––––––––*/
-var pointLight = new THREE.PointLight(0xFFFFFF);
-var pointLight2 = new THREE.PointLight(0xFFFFFF);
-pointLight.position.set(100, 50, 50);
-pointLight2.position.set(-150, 50, -50);
+var pointLight = new THREE.PointLight(0xbbbbbb);
+var pointLight2 = new THREE.PointLight(0xbbbbbb);
+pointLight.position.set(120, 80, 120);
+pointLight2.position.set(-120, 80, -120);
 scene.add(pointLight);
 scene.add(pointLight2);
+var ambLight = new THREE.AmbientLight(0x555555);
+scene.add( ambLight );
 /*––––––––––––––––––––––––––––––––––––––––*/
 
 
 
 
 
-
-
-
-
-
 var spawnCycle = function () {
-	lastDir = undefined; // for turn detection
+	lastDir = undefined;
 	turnCoords = [];
 	wallParent.netLength = 0;
-	rubber = 0;
-
 	collision = false;
-	collisionWall = undefined;
+	playerSpeed = startingSpeed;
+	rubber = 0;
+	rubberVisuals();
+
 	lightcycle.alive = true;
 	lightcycle.position.set(0,2,0);
-	playerSpeed = startingSpeed;
 	scene.add(lightcycle);
-
+	
 	engineSound = playSound(bufferLoader.bufferList[0], 0.5, 1, true);
-
 	document.querySelector('#press-z').style.visibility = "hidden";
 };
 
@@ -320,6 +325,10 @@ var addTurnCoords = function (d) {
 var collapseWalls = function () {
 
 	wallParent.scale.y -= 0.04; // lower walls
+
+	wallParent.children.forEach( function(e) {
+		e.material.map.repeat.y -= 0.04;
+	});
 	
 	if (wallParent.scale.y <= 0) { // walls are down, set up to respawn
 		wallParent.children = [];
@@ -336,15 +345,15 @@ var crash = function () {
 	playerSpeed = 0;
 	lightcycle.alive = false;
 	scene.remove(lightcycle);
-	wall.scale.x -= blastRadius;
+	//wall.scale.x -= blastRadius;
 
-	explosionSound = playSound(bufferLoader.bufferList[1], 1.0, 1, false);
 	engineSound.stop();
+	explosionSound = playSound(bufferLoader.bufferList[1], 1, 1, false);
 
 	setTimeout(function(){
 		RENDER_LIST.push(collapseWalls);
-		morphSound = playSound(bufferLoader.bufferList[3], 1.2, 1.7, false);
-		wallParent.children.forEach( function(e, index) {
+		morphSound = playSound(bufferLoader.bufferList[3], 1, 1.8, false);
+		wallParent.children.forEach( function(e) {
 			e.material.color.r = 1.0;
 			e.material.color.g = 1.0;
 			e.material.color.b = 1.0;
@@ -353,48 +362,68 @@ var crash = function () {
 };
 
 
-var handleRubber = function () {
-	
-	if (collision) {
-		
-		rubber =  Math.min(5, rubber += playerSpeed/rubberDrainFactor);	
-
-	} else if (rubber >= 0) {
-
-		rubber = Math.max(0, rubber -= rubberFillFactor);
-		
-		if (showInfo && collisionWall !== undefined) {
-			if (wallParent.children[collisionWall].material.color.r > 0) {
-				wallParent.children[collisionWall].material.color.r -= 0.05;
-			} else {
-
-			collisionWall = undefined; // de-illuminate collisionWall
-			}
-		}
-
-	}
+var rubberVisuals = function () {
 
 	rubberGauge.style.width = (rubber*30) + 'px';
 	rubberGauge.style.backgroundColor = 'rgb('+ Math.floor(rubber*50) +','+ (255-Math.floor(rubber*rubber*rubber*2)) +', 0)';
 	
-	lightcycle.children[1].material.opacity = rubber/5;
+	lightcycle.children[1].material.opacity = rubber/5; // glow wireframe
 	lightcycle.children[1].material.color.r = 0.5 + rubber/10;
 	lightcycle.children[1].material.color.g = 1 - (rubber*rubber*rubber)/50;
 	lightcycle.children[1].material.color.b = 0.5 - rubber/10;
 };
 
-bouncePlayed = false;
-var handleCollision = function () {
+var wallLightFade = function () {
+	wallParent.children.forEach( function(e) {
+		if (e.material.color.r > 0) {
+			e.material.color.r -= 0.03; // fade
+		}
+	});
+}
+
+var handleRubber = function () {
+	
+	wallLightFade();
+
+	if (collision) {
+		
+		rubber = Math.min(5, rubber += playerSpeed/rubberDrainFactor);	
+	
+	} else if (rubber > 0) {
+
+		rubber = Math.max(0, rubber -= rubberFillFactor);
+
+	} else {
+		
+		return;
+	}
+
+	rubberVisuals();
+};
+
+
+
+var collisionHandled = false;
+var handleCollision = function (wn) {
+	
 	if (rubber >= 5) {
 		crash();
+		return;
 	}
-	if (bouncePlayed === false) {
-		bounceSound = playSound(bufferLoader.bufferList[2], 0.1+playerSpeed/6, Math.max(1, playerSpeed), false);
-		bouncePlayed = true;
+
+	if (collisionHandled === false) {
+		
+		bounceSound = playSound(bufferLoader.bufferList[2], 0.1+playerSpeed/9, Math.max(1, playerSpeed), false);
+		
+		if (wn !== undefined) {
+
+			wallParent.children[wn].material.color.r = 1; // light up wall
+		}
+		collisionHandled = true;
 	}
 };
 
-var wn;
+
 var wallCheck = function () {
 	
 	var cycleTrajectory = lightcycle.clone().translateX( rubberDistance );
@@ -404,8 +433,8 @@ var wallCheck = function () {
 
 	collision = false; // remains false unless collision is detected
 
-	// bug: if player turns (creating new wall) right after speeding through a wall, the previous intersection goes undetected.
-
+	// bug: if player turns (creating new wall) right after speeding through a wall, the (now previous) intersection goes undetected.
+	var wn;
 	for (wn = 2; wn < length; wn += 1) {
 
 		intersect = doLineSegmentsIntersect(
@@ -417,11 +446,8 @@ var wallCheck = function () {
 
 		if (intersect === true) {
 
-			handleCollision();
 			collision = true;
-			collisionWall = wn-2;
-			if (showInfo) wallParent.children[collisionWall].material.color.r = 1; // highlight this wall
-			//return true;
+			handleCollision(wn-2);
 		}
 	}
 
@@ -429,7 +455,6 @@ var wallCheck = function () {
 		
 		handleCollision();
 		collision = true;
-		//return true;
 	}
 
 	return collision;
@@ -437,12 +462,13 @@ var wallCheck = function () {
 
 
 var wallAccelCheck = function () {
-	
+
 	var cycleLeft = lightcycle.clone().translateZ( -wallAccelRange );
 	var cycleRight = lightcycle.clone().translateZ( wallAccelRange );
-	
 	var accelIntersect;
 	var length = turnCoords.length;
+	wallAccel = false;
+
 	for (var w = 2; w < length; w += 1) {
 
 		accelIntersect = doAccelLineSegmentsIntersect(
@@ -456,11 +482,10 @@ var wallAccelCheck = function () {
 
 			wallAccelAmount = ((wallAccelRange - accelIntersect.pointDist)/120)+1;
 			wallAccel = true;
-			return true; // possibly skips walls
 		}
 	}
-	wallAccelAmount = 0;
-	wallAccel = false;
+
+	return wallAccel;
 };
 
 
@@ -500,13 +525,13 @@ var onKeyDown = function (e) {
 		case 68:
 		case 83:
 		case 65: 	
-					turnStack.push(turnLeft);
+					if (paused === false) turnStack.push(turnLeft);
 					break;
 		case 74: // right
 		case 75:
 		case 76:
 		case 186: 	
-					turnStack.push(turnRight);
+					if (paused === false) turnStack.push(turnRight);
 					break;
 
 		case 80: // p
@@ -535,10 +560,6 @@ var onKeyDown = function (e) {
 						scene.remove(lookAheadLine);
 						scene.remove(lookAheadLine2);
 						lightcycle.remove(accelBoundingLine);
-						if (collisionWall !== undefined && lightcycle.alive) {
-							wallParent.children[collisionWall].material.color.r = 0; // de-illuminate collisionWall
-							collisionWall = undefined;
-						}
 					}
 					break;
 		case 86: // v
@@ -636,6 +657,33 @@ var cameraView = function () {
 };
 
 
+var audioMixing = function () {
+
+	engineSound.playbackRate.value = playerSpeed;
+	
+	cycleSounds.panner.setPosition(lightcycle.position.x, lightcycle.position.y, lightcycle.position.z);
+	ctx.listener.setPosition(camera.position.x, camera.position.y, camera.position.z);
+
+	var m = camera.matrix;
+	var mx = m.elements[12], my = m.elements[13], mz = m.elements[14];
+	m.elements[12] = m.elements[13] = m.elements[14] = 0;
+
+	var vec = new THREE.Vector3(0,0,1);
+	vec.applyProjection(m);
+	vec.normalize();
+	var up = new THREE.Vector3(0,-1,0);
+	up.applyProjection(m);
+	up.normalize();
+
+	ctx.listener.setOrientation(vec.x, vec.y, vec.z, up.x, up.y, up.z);
+
+	m.elements[12] = mx;
+	m.elements[13] = my;
+	m.elements[14] = mz;
+};
+
+
+
 var changeVelocity = function () {
 
 	if (keyboard.pressed('space')) {
@@ -648,7 +696,7 @@ var changeVelocity = function () {
 		targetSpeed = constrainSpeed(playerSpeed*boostFactor);
 		friction = 0.05;
 
-	} else if (wallAccel) {
+	} else if (wallAccel === true) {
 
 		targetSpeed = Math.max(regularSpeed+0.2, playerSpeed*wallAccelAmount);
 		friction = 0.05;
@@ -670,7 +718,6 @@ var changeVelocity = function () {
 	}
 
 
-
 	if (dir !== lastDir) { // we have turned or respawned
 
 	    wall = createWall(0x00ffdd);
@@ -681,10 +728,10 @@ var changeVelocity = function () {
 		wallParent.add(wall);
 		addTurnCoords(dir);
 
-		if (lastDir !== undefined) { // skip respawn
+		if (lastDir !== undefined) { // after spawn
 			
 			turnSound = playSound(bufferLoader.bufferList[1], 0.7, 10, false);
-			bouncePlayed = false;
+			collisionHandled = false;
 
 			targetSpeed = constrainSpeed(playerSpeed*turnSpeedFactor);
 			friction = 0.08;
@@ -702,15 +749,19 @@ var changeVelocity = function () {
 
 var moveStuff = function () {
 	
-	lightcycle.translateX( playerSpeed );  // move lightcycle
+	lightcycle.translateX(playerSpeed);  // move lightcycle
 
 	wall.scale.x += playerSpeed;  // grow current wall
+	wall.material.map.repeat.x = wall.scale.x / wallTextureProportion;
+	
+
 	wallParent.netLength += playerSpeed;
 
 	if (wallParent.netLength > maxTailLength) {
 
 		wallParent.children[0].scale.x -= playerSpeed; // shrink wrong side of last wall
-		wallParent.children[0].translateX( playerSpeed ); // re-connect last wall
+		wallParent.children[0].translateX(playerSpeed); // re-connect last wall
+		wallParent.children[0].material.map.repeat.x = -(wallParent.children[0].scale.x / wallTextureProportion);
 		
 		wallParent.netLength -= playerSpeed;
 
@@ -738,39 +789,13 @@ var moveStuff = function () {
 
 
 
-var audioMixing = function () {
-
-	engineSound.playbackRate.value = playerSpeed;
-
-	cycleSounds.panner.setPosition(lightcycle.position.x, lightcycle.position.y, lightcycle.position.z);
-	ctx.listener.setPosition(camera.position.x, camera.position.y, camera.position.z);
-
-	var m = camera.matrix;
-	var mx = m.elements[12], my = m.elements[13], mz = m.elements[14];
-	m.elements[12] = m.elements[13] = m.elements[14] = 0;
-
-	var vec = new THREE.Vector3(0,0,1);
-	vec.applyProjection(m);
-	vec.normalize();
-	var up = new THREE.Vector3(0,-1,0);
-	up.applyProjection(m);
-	up.normalize();
-
-	ctx.listener.setOrientation(vec.x, vec.y, vec.z, up.x, up.y, up.z);
-
-	m.elements[12] = mx;
-	m.elements[13] = my;
-	m.elements[14] = mz;
-};
-
-
 
 var lastTime = 0;
 var turnStack = [];
 var executeTurn = function (callback) {
 	
 	if (turnStack.length > 0) {
-		if ((time - lastTime) > turnDelay) {
+		if ((time - lastTime) > turnDelay/playerSpeed) {
 			var shifted = turnStack.shift();
 			shifted();
 			lastTime = time;
@@ -800,19 +825,16 @@ var animate = function () {
 			handleRubber();
 		}
 		
-		var RL = RENDER_LIST.length;
-		for (var r = 0; r < RL; r += 1) {
+		for (var r = 0; r < RENDER_LIST.length; r += 1) {
 			RENDER_LIST[r]();
 		}
-		
 	
 		audioMixing();
-	} 
-	
-	cameraView();
+		cameraView();
+		//cameraControls.target.set(lightcycle.position.x, lightcycle.position.y, lightcycle.position.z);
+	}
 
 	
-
 	stats.update();
 	renderer.render(scene, camera);
 };
@@ -828,6 +850,7 @@ var startGame = function (e) {
 		document.removeEventListener('keydown', startGame);
 		spawnCycle();
 		audioMixing();
+		cameraControls.target = lightcycle.position;
 	}
 };
 document.addEventListener('keydown', startGame);

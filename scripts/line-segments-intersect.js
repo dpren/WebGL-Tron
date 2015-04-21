@@ -10,22 +10,10 @@ function doLineSegmentsIntersect(p, p2, q, q2) {
 	if (denominator == 0) {
 		// lines are paralell
 		return false;
-	}
+	};
 	
 	var uNumerator = crossProduct(subtractPoints(q, p), r);
 
-	// if (uNumerator === 0 && denominator === 0) {
-	// 	// They are coLlinear
-	// 	console.log('coLlinear intersect');
-	// 	// Do they touch? (Are any of the points equal?)
-	// 	if (equalPoints(p, q) || equalPoints(p, q2) || equalPoints(p2, q) || equalPoints(p2, q2)) {
-	// 		return true
-	// 	}
-	// 	// Do they overlap? (Are all the point differences in either direction the same sign)
-	// 	// Using != as exclusive or
-	// 	return ((q.x - p.x < 0) != (q.x - p2.x < 0) != (q2.x - p.x < 0) != (q2.x - p2.x < 0)) || 
-	// 		((q.z - p.z < 0) != (q.z - p2.z < 0) != (q2.z - p.z < 0) != (q2.z - p2.z < 0));
-	// }
 
 	var u = uNumerator / denominator;
 	var t = crossProduct(subtractPoints(q, p), s) / denominator;
