@@ -41,11 +41,13 @@ function doAccelLineSegmentsIntersect(p, p2, q, q2) {
 
 	if ((t >= 0) && (t <= 1) && (u >= 0) && (u <= 1)) {
 
-		var distFromCycle = Math.abs( ((p.x + t * r.x)-lightcycle.position.x) + ((p.z + t * r.z)-lightcycle.position.z) );
-		
+		var distFromCycle = ((p.x + t * r.x)-lightcycle.position.x) + ((p.z + t * r.z)-lightcycle.position.z);
+		var distFromCycleAbsolute = Math.abs( distFromCycle );
+
 		return {
 			check: true,
-			pointDist: distFromCycle
+			pointDist: distFromCycleAbsolute,
+			whichSide: distFromCycle
 		}
 	} else {
 		return {

@@ -2,8 +2,8 @@ var ctx = new AudioContext();
 var bufferLoader = new BufferLoader(
     ctx,
     [
-      "sounds/AAcyclrun.wav",
-      "sounds/AAexpl.wav",
+      "sounds/CLcyclrun.wav",
+      "sounds/CLexpl.wav",
       "sounds/energy.mp3",
       "sounds/morph.mp3"
     ]
