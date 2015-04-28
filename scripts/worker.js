@@ -84,17 +84,17 @@ function subtractPoints(point1, point2) {
 
 
 // var worker = new Worker('scripts/worker.js');
-// worker.postMessage({
-//   some_data: 'foo',
-//   some_more_data: 'bar'
-// });
-
 // worker.onmessage = function(e) {
-//   var data = e.data;
-//   if (data.type === 'result') {
-//     // process results
-//   }
-//   else if (data.type === 'debug') {
-//     console.log(data.value);
-//   }
+//  collision = e.data.collision;
+//  if (collision === true) {
+//      handleCollision(lightcycle1, e.data.wn);
+//  }
 // }
+// var wallCheckWorker = function (cycle) { 
+//  var cycleTrajectory = cycle.clone().translateX( rubberDistance );
+//  worker.postMessage({
+//    cycle: cycleTrajectory.position,
+//    turns: cycle.turnCoords,
+//    grid: gridSize
+//  });
+// };

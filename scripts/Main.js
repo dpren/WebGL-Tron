@@ -13,7 +13,7 @@ var renderer = new THREE.WebGLRenderer({ antialias: true });
 var scene = new THREE.Scene();
 
 var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 1, 1000 );
-	camera.position.set(-100,100,100);
+	camera.position.set(-250, 100, 50);
 
 
 var cameraControls = new THREE.OrbitControls(camera);
@@ -47,13 +47,12 @@ var speedGauge = document.querySelector('#speed-gauge');
 
 
 
-var RENDER_LIST = []; // push stuff into this to get it animated
-
-
+var activePlayers = [];
 
 var paused = true;
 var showInfo = false;
-var view = 0;
+var view = 3;
+var viewTarget = 0;
 
 var easing = 0.08;
 var friction = 0.005;
@@ -62,7 +61,6 @@ var maxTailLength = 1000;
 
 var turnDelay = 0.01; // seconds
 
-var rubberDistance = 3;
 var rubberDrainFactor = 5; // lower drains faster
 var rubberFillFactor = 0.03; // higher refills faster
 
@@ -142,7 +140,7 @@ scene.add(gridHelper);
 
 
 /*—–––––––––––cycle constructor—–––––––––––*/
-var createLightcycle = (function (colorCode, x, z) {
+var createLightcycle = (function (x, z, dir, colorCode, lightUpColor, ai) {
 
 	var cycleMaterial = new THREE.MeshLambertMaterial({
 		map: THREE.ImageUtils.loadTexture('images/cautionsolid.png'),
@@ -221,26 +219,30 @@ var createLightcycle = (function (colorCode, x, z) {
 		cycle.add(windshield2);
 		cycle.add(windshield3);
 
-		cycle.position.set(x, 2, z);
 		cycle.color = colorCode;
+		cycle.lightUpColor = lightUpColor;
 
-		cycle.alive = true;
-		cycle.collision = false;
-		cycle.respawnAvailable = false;
-		cycle.autoPilot = false;
+		cycle.position.set(x, 2, z);
 		
-		cycle.dir = 1; // direction
+		cycle.rotation.set(0,-1.5707963267948966,0);
+		cycle.dir = dir;
+		cycle.rotateY(halfPi * dir);
+
 		cycle.lastDir = undefined;
 		cycle.lastTurnTime = 0;
 		cycle.turnStack = [];
 		cycle.turnCoords = [];
-
+		
 		cycle.walls = new THREE.Object3D();
+		cycle.walls.children = [];
+		cycle.walls.scale.y = 1;
 		scene.add(cycle.walls);
 		cycle.walls.netLength = 0;
 		cycle.currentWall;
 
 		cycle.rubber = 0;
+		cycle.rubberMinDistance = 3;
+		cycle.rubberMinAdjust = 0.5; // factor by how much deeper you can dig upon re-approaching wall
 		cycle.speed = startingSpeed;
 		cycle.targetSpeed = regularSpeed;
 		cycle.lastSpeed = cycle.speed;
@@ -249,6 +251,14 @@ var createLightcycle = (function (colorCode, x, z) {
 		cycle.wallAccelAmount;
 		//cycle.wallAccelSide; // todo: something that detects which side a nearby wall is on (for AI)
 
+		cycle.alive = true;
+		cycle.respawnAvailable = false;
+		cycle.autoPilot = ai;
+		cycle.collision = false;
+		cycle.collisionHandled = false;
+
+		cycle.RENDER_LIST = []; // lets you add/remove stuff to the animation loop as needed
+
 	return cycle;
 });
 /*–––––––––––––––––––––––––––––––––––––––––*/
@@ -256,7 +266,7 @@ var createLightcycle = (function (colorCode, x, z) {
 
 /*—––––––––––––wall–constructor—–––––––––––*/	
 var wallTextureProportion;
-var textureType = 'images/dir_wall.png';
+var textureType = 'images/white.png';
 var textureBlending = false;
 
 var createWall = function (colorCode) {
@@ -289,20 +299,18 @@ var createWall = function (colorCode) {
 
 
 /*–––––––––––––––––lights––––––––––––––––––*/
-var pointLight = new THREE.PointLight(0xcccccc);
+var pointLight = new THREE.PointLight(0xdddddd);
 pointLight.position.set(0, 150, 0);
 scene.add(pointLight);
-//var pointLight2 = new THREE.PointLight(0xffffff);
-//pointLight2.position.set(-120, 80, -120);
-//scene.add(pointLight2);
-var ambLight = new THREE.AmbientLight(0x999999);
+
+var ambLight = new THREE.AmbientLight(0xaaaaaa);
 scene.add( ambLight );
 /*–––––––––––––––––––––––––––––––––––––––––*/
 
 
 
-var lightcycle1  = createLightcycle(0x0044ff, 0, 0);
-var lightcycle2 = createLightcycle(0xff4400, 0, 0);
+var lightcycle1  = createLightcycle(0, 0, 0, 0x0044ff, 'r', false);
+var lightcycle2  = createLightcycle(0, 0, 0, 0xff4400, 'g', true);
 
 var animateCycle = function (cycle) {
 	return function() {
@@ -314,24 +322,24 @@ var animateCycle = function (cycle) {
 	};
 };
 
-var spawnCycle = function (cycle, x, z) {
-	cycle.lastDir = undefined;
-	cycle.turnCoords = [];
-	cycle.turnStack = [];
-	cycle.walls.netLength = 0;
-	cycle.collision = false;
-	cycle.speed = startingSpeed;
-	cycle.rubber = 0;
-	rubberVisuals(cycle);
+var spawnCycle = function (cycle, x, z, dir, ai) {
 
-	cycle.alive = true;
-	cycle.position.set(x,2,z);
+	cycle = createLightcycle(x, z, dir, cycle.color, cycle.lightUpColor, ai);
+	
+	addCycleTurnCoords(cycle);
+	
 	scene.add(cycle);
 	
-	engineSound = playSound(bufferLoader.bufferList[0], 0.5, 1, true);
-	RENDER_LIST.push(animateCycle(cycle));
+	rubberVisuals(cycle);
+
+	activePlayers.push(cycle);
+	
+	//engineSound = playSound(bufferLoader.bufferList[0], 0.5, 1, true);
+	cycle.RENDER_LIST.push(animateCycle(cycle));
 
 	pressZ.style.visibility = "hidden";
+
+	return cycle;
 };
 
 
@@ -362,7 +370,7 @@ var executeTurn = function (cycle) {
 };
 
 
-var addTurnCoords = function (cycle) {
+var addCycleTurnCoords = function (cycle) {
 	cycle.turnCoords.push({
 		x: cycle.position.x,
 		z: cycle.position.z,
@@ -372,20 +380,31 @@ var addTurnCoords = function (cycle) {
 
 
 var collapseWalls = function (cycle) {
+	
 	return function() {
 
-		cycle.walls.scale.y -= 0.04; // lower walls
+		cycle.walls.scale.y -= 0.04; // scale down walls
 
-		cycle.walls.children.forEach( function(e) {
-			e.material.map.repeat.y -= 0.04;
+		cycle.walls.children.forEach( function(el) {
+			el.material.map.repeat.y -= 0.04; // scale down wall texture
 		});
 		
-		if (cycle.walls.scale.y <= 0) { // walls are down, set up to respawn
-			cycle.walls.children = [];
-			cycle.walls.scale.y = 1;
+
+		if (cycle.walls.scale.y <= 0) { // walls are down, set up for respawn
+
+			scene.remove(cycle.walls);
 			cycle.respawnAvailable = true;
-			pressZ.style.visibility = "visible";
-			RENDER_LIST.splice(RENDER_LIST.indexOf(this), 1); // done, clear this task
+
+			if (cycle === lightcycle1) {
+				pressZ.style.visibility = "visible";
+			}
+
+			activePlayers.splice( activePlayers.indexOf(cycle), 1);
+			if (activePlayers.length > 0) {
+				changeViewTarget(-1); // look at another alive player
+			}
+
+			cycle.RENDER_LIST.splice( cycle.RENDER_LIST.indexOf(this), 1); // done, remove this task
 		}
 	}
 };
@@ -395,19 +414,21 @@ var crash = function (cycle) {
 	cycle.targetSpeed = 0;
 	cycle.speed = 0;
 	cycle.alive = false;
+	
 	scene.remove(cycle);
 
-	engineSound.stop();
+	//engineSound.stop();
 	explosionSound = playSound(bufferLoader.bufferList[1], 1, 1, false);
-	RENDER_LIST.splice(RENDER_LIST.indexOf(animateCycle(cycle)), 1);
+	cycle.RENDER_LIST.splice( cycle.RENDER_LIST.indexOf(animateCycle(cycle)), 1);
 
-	setTimeout(function(){
-		RENDER_LIST.push(collapseWalls(cycle));
+	setTimeout( function() {
+
+		cycle.RENDER_LIST.push(collapseWalls(cycle));
 		morphSound = playSound(bufferLoader.bufferList[3], 1, 1.8, false);
-		cycle.walls.children.forEach( function(e) {
-			e.material.color.r = 1.0;
-			e.material.color.g = 1.0;
-			e.material.color.b = 1.0;
+		cycle.walls.children.forEach( function(el) {
+			el.material.color.r = 1.0;
+			el.material.color.g = 1.0;
+			el.material.color.b = 1.0;
 		});
 	}, 1500);
 };
@@ -418,25 +439,52 @@ var updateGauge = function(elem, val) {
 	elem.style.backgroundColor = 'rgb('+ Math.floor(val*50) +','+ (255-Math.floor(val*val*val*2)) +', 0)';
 };
 
+var wallLightUp = function (cycle, wn) {
+	
+	if (cycle.lightUpColor === 'r') {
+		cycle.walls.children[wn].material.color.r = 1;
+	} else if (cycle.lightUpColor === 'g') {
+		cycle.walls.children[wn].material.color.g = 1;
+	} else {
+		cycle.walls.children[wn].material.color.b = 1;
+	}
+};
+
+var wallLightFade = function (cycle) {
+		if (cycle.lightUpColor === 'r') {
+			cycle.walls.children.forEach( function(el) {
+				if (el.material.color.r > 0) {
+					el.material.color.r -= 0.03;
+				}
+			});
+		} else if (cycle.lightUpColor === 'g') {
+			cycle.walls.children.forEach( function(el) {
+				if (el.material.color.g > 0) {
+					el.material.color.g -= 0.03;
+				}
+			});
+		} else {
+			cycle.walls.children.forEach( function(el) {
+				if (el.material.color.b > 0) {
+					el.material.color.b -= 0.03;
+				}
+			});
+		}	
+};
 
 var rubberVisuals = function (cycle) {
-
-	updateGauge(rubberGauge, cycle.rubber);
+	
+	if (cycle === lightcycle1) {
+		updateGauge(rubberGauge, cycle.rubber);
+	}
 	
 	cycle.children[0].material.opacity = 1.0 - cycle.rubber/6; // fade body
+
 	cycle.children[3].material.opacity = cycle.rubber/5; // glow wireframe
 	cycle.children[3].material.color.r = 0.5 + cycle.rubber/10;
 	cycle.children[3].material.color.g = 1 - (cycle.rubber*cycle.rubber*cycle.rubber)/50;
 	cycle.children[3].material.color.b = 0.5 - cycle.rubber/10;
 };
-
-var wallLightFade = function (cycle) {
-	cycle.walls.children.forEach( function(e) {
-		if (e.material.color.r > 0) {
-			e.material.color.r -= 0.03; // fade
-		}
-	});
-}
 
 var handleRubber = function (cycle) {
 	
@@ -460,72 +508,93 @@ var handleRubber = function (cycle) {
 
 
 
-var collisionHandled = false;
-var handleCollision = function (cycle, wn) {
+var handleCollision = function (cycle, wn, el) {
 	
 	if (cycle.rubber >= 5) {
 		crash(cycle);
 		return;
 	}
 
-	if (collisionHandled === false) {
+	if (cycle.collisionHandled === false) {
 		
 		bounceSound = playSound(bufferLoader.bufferList[2], 0.1+cycle.speed/9, Math.max(1, cycle.speed), false);
 		
-		if (wn !== undefined) {
-
-			cycle.walls.children[wn].material.color.r = 1; // light up wall
+		if (wn !== undefined && cycle === el) {
+		//if (wn !== undefined) {
+			wallLightUp(el, wn);
 		}
-		collisionHandled = true;
+
+		cycle.collisionHandled = true;
 	}
 };
 
 
-// var worker = new Worker('scripts/worker.js');
-// worker.onmessage = function(e) {
-// 	collision = e.data.collision;
-// 	if (collision === true) {
-// 		handleCollision(lightcycle1, e.data.wn);
-// 	}
-// }
-// var wallCheckWorker = function (cycle) {	
-// 	var cycleTrajectory = cycle.clone().translateX( rubberDistance );
-// 	worker.postMessage({
-// 	  cycle: cycleTrajectory.position,
-// 	  turns: cycle.turnCoords,
-// 	  grid: gridSize
-// 	});
-// };
-
-
+// todo: cycle.rubberMinAdjust
 
 var wallCheck = function (cycle) {
-	
-	var cycleTrajectory = cycle.clone().translateX( rubberDistance );
+	// bug: if player turns (creating new wall) right after speeding through a wall, the (now previous) intersection goes undetected.
+	var cycleTrajectory = cycle.clone().translateX( cycle.rubberMinDistance );
+	var intersect;
+	var intersectOther;
+	var intersectOtherLatest;
+	var length = cycle.turnCoords.length;
 	cycle.collision = false; // remains false unless collision is detected
 
-	var intersect;
-	// bug: if player turns (creating new wall) right after speeding through a wall, the (now previous) intersection goes undetected.
-	var length = cycle.turnCoords.length;
-	var wn;
-	for (wn = 2; wn < length; wn += 1) {
-		intersect = doLineSegmentsIntersect(
-									cycle.turnCoords[length-1],
-									cycleTrajectory.position,
-									cycle.turnCoords[wn-2],
-									cycle.turnCoords[wn-1]
-									);
-		if (intersect === true) {
-			cycle.collision = true;
-			handleCollision(cycle, wn-2);
+
+	activePlayers.forEach( function(el) {
+
+		var w;
+		if (el === cycle) { // own walls, don't check latest two
+
+			for (w = 2; w < el.turnCoords.length; w += 1) {
+				intersect = doLineSegmentsIntersect(
+											cycle.turnCoords[cycle.turnCoords.length-1],
+											cycleTrajectory.position,
+											el.turnCoords[w-2],
+											el.turnCoords[w-1]
+											);
+				if (intersect === true) {
+
+					cycle.collision = true;
+					handleCollision(cycle, w-2, el);
+				}
+			}
+
+		} else { // other players walls
+
+			for (w = 1; w < el.turnCoords.length; w += 1) { // all but latest
+				intersectOther = doLineSegmentsIntersect(
+											cycle.turnCoords[cycle.turnCoords.length-1],
+											cycleTrajectory.position,
+											el.turnCoords[w-1],
+											el.turnCoords[w]
+											);
+				if (intersectOther === true) {
+
+					cycle.collision = true;
+					handleCollision(cycle, w-1, el);
+				}
+			}
+
+			intersectOtherLatest = doLineSegmentsIntersect( // latest wall being formed
+										cycle.turnCoords[cycle.turnCoords.length-1],
+										cycleTrajectory.position,
+										el.turnCoords[el.turnCoords.length-1],
+										el.position
+										);
+
+			if (intersectOtherLatest === true) {
+				
+				cycle.collision = true;
+				handleCollision(cycle, el.turnCoords[el.turnCoords.length-1], el);
+			}
 		}
-	}
+	});
+
 	if (Math.abs(cycleTrajectory.position.x) >= gridSize || Math.abs(cycleTrajectory.position.z) >= gridSize) {
 		handleCollision(cycle);
 		cycle.collision = true;
 	}
-
-	return cycle.collision;
 };
 
 
@@ -551,7 +620,7 @@ var wallAccelCheck = function (cycle) {
 		if (accelIntersect.check === true) {
 
 			cycle.wallAccelAmount = ((wallAccelRange - accelIntersect.pointDist)/120)+1;
-			//wallAccelSide = accelIntersect.whichSide; // not working yet
+			//cycle.wallAccelSide = accelIntersect.whichSide; // not working yet
 			cycle.wallAccel = true;
 		}
 	}
@@ -560,53 +629,67 @@ var wallAccelCheck = function (cycle) {
 };
 
 
+
 var activateAI = function (cycle) {
-	if ((time - cycle.lastTurnTime) > 0.1) {
+	if ((time - cycle.lastTurnTime) > 0.2) {
 
-		// if (cycle.wallAccel) {
-		// 	console.log(wallAccelSide);
-		// 	if (wallAccelSide < 0) {
-				
-		// 		turnStack.push(turnLeft(cycle));
+		/*if (cycle.wallAccel) {
+			console.log(cycle.wallAccelSide);
+			if (cycle.wallAccelSide < 0) {
+				turnStack.push(turnLeft(cycle));
+			} else if (cycle.wallAccelSide > 0) {
+				turnStack.push(turnRight(cycle));
+			}
+		} else*/
 
-		// 	} else if (wallAccelSide > 0) {
-				
-		// 		turnStack.push(turnRight(cycle));
-		// 	}
-		// } else
 		if (Math.random() > 0.5) {
 			cycle.turnStack.push(turnLeft(cycle));
-
 		} else {
 			cycle.turnStack.push(turnRight(cycle));
-		}
+		}	
 	}
 };
 
 var autopilotWallCheck = function (cycle) {
-	return function() {
-		if (cycle.alive) {
-			var cycleTrajectory = cycle.clone().translateX( 10 ); // how far ahead to check
-			var length = cycle.turnCoords.length;
-			for (var w = 2; w < length; w += 1) {
-				
-				if ( doLineSegmentsIntersect(
-											cycle.turnCoords[length-1],
-											cycleTrajectory.position,
-											cycle.turnCoords[w-2],
-											cycle.turnCoords[w-1]
-											) === true ) {
-					activateAI(cycle);
-					return;
-				}
-			}
-			if (Math.abs(cycleTrajectory.position.x) >= gridSize || Math.abs(cycleTrajectory.position.z) >= gridSize) {
+
+	if (cycle.autoPilot === true) {
+		var cycleTrajectory = cycle.clone().translateX( 10 ); // how far ahead to check
+		var length = cycle.turnCoords.length;
+		for (var w = 2; w < length; w += 1) {
+			
+			if ( doLineSegmentsIntersect(
+										cycle.turnCoords[cycle.turnCoords.length-1],
+										cycleTrajectory.position,
+										cycle.turnCoords[w-2],
+										cycle.turnCoords[w-1]
+										) === true ) {
 				activateAI(cycle);
 				return;
 			}
 		}
-	};
+		if (Math.abs(cycleTrajectory.position.x) >= gridSize || Math.abs(cycleTrajectory.position.z) >= gridSize) {
+			activateAI(cycle);
+			return;
+		}
+		if (time - cycle.lastTurnTime > 3 ) {
+			activateAI(cycle);
+			return;
+		}
+	}
 };
+
+var changeViewTarget = function (i) {
+	
+	viewTarget += i;
+
+	if (viewTarget > activePlayers.length-1) {
+		viewTarget = 0;
+	} else if (viewTarget < 0) {
+		viewTarget = activePlayers.length-1;
+	}
+
+	cameraControls.target = activePlayers[viewTarget].position;
+}
 
 
 var onKeyDown = function (e) {
@@ -653,15 +736,15 @@ var onKeyDown = function (e) {
 						lightcycle1.remove(accelBoundingLine);
 					}
 					break;
-		case 86: // v
+		case 67: // c
 					view += 1;
 					if (view > 4) {
-						if (lightcycle1.walls.children[lightcycle1.walls.children.length-1]) {
-							lightcycle1.walls.children[lightcycle1.walls.children.length-1].visible = true;
-						}
-						lightcycle1.visible = true;
-						if (paused === false) setTimeout(function(){cycleSounds.gain.value = 8;}, 150);
 						view = 0;
+						if (activePlayers[viewTarget].walls.children[activePlayers[viewTarget].walls.children.length-1]) {
+							activePlayers[viewTarget].walls.children[activePlayers[viewTarget].walls.children.length-1].visible = true;
+						}
+						activePlayers[viewTarget].visible = true;
+						if (paused === false) setTimeout(function(){cycleSounds.gain.value = 8;}, 150);
 					} else if (view === 4) {
 						if (paused === false) cycleSounds.gain.value = 1;
 					}
@@ -676,20 +759,25 @@ var onKeyDown = function (e) {
 		case 90: // z
 					if (lightcycle1.respawnAvailable === true) {
 						lightcycle1.turnStack = []; // clear in case turn keys are pressed while dead
-						spawnCycle(lightcycle1, 0, 0);
-						lightcycle1.respawnAvailable = false;
+						lightcycle1 = spawnCycle(lightcycle1, -150, 0, 1, false);
+						viewTarget = activePlayers.indexOf(lightcycle1);
+						cameraControls.target = activePlayers[viewTarget].position; // look at your shiny new cycle
+					}
+					break;
+		case 88: // x
+					if (lightcycle2.respawnAvailable === true) {
+						lightcycle2.turnStack = []; // clear in case turn keys are pressed while dead
+						lightcycle2 = spawnCycle(lightcycle2, 150, 0, 1, true);
 					}
 					break;
 		case 192: // ~`
 					lightcycle1.autoPilot = !lightcycle1.autoPilot;
 					if (lightcycle1.autoPilot) {
 						lightcycle1.add(indicator);
-						RENDER_LIST.push(animateIndicator);
-						RENDER_LIST.push(autopilotWallCheck(lightcycle1));
+						lightcycle1.RENDER_LIST.push(animateIndicator);
 					} else {
 						lightcycle1.remove(indicator);
-						RENDER_LIST.splice(RENDER_LIST.indexOf(animateIndicator), 1);
-						RENDER_LIST.splice(RENDER_LIST.indexOf(autopilotWallCheck(lightcycle1)), 1);
+						lightcycle1.RENDER_LIST.splice(lightcycle1.RENDER_LIST.indexOf(animateIndicator), 1);
 					}
 					break;
 		case 84: // t
@@ -704,6 +792,9 @@ var onKeyDown = function (e) {
 		case 51: // 3
 					textureType = 'images/white.png';
 					break;
+		case 86: // v
+					changeViewTarget(1);
+					break;
     }
 };
 
@@ -717,7 +808,7 @@ var cameraView = function (cycle) {
 
 	if (view === 0) {
 	 // smart
-		relativeCameraOffset = new THREE.Vector3(0,8+(10*cycle.speed*cycle.speed),0);
+		relativeCameraOffset = new THREE.Vector3(-20, (10*cycle.speed*cycle.speed), 0);
 		cameraOffset = relativeCameraOffset.applyMatrix4( cycle.matrixWorld );
 		camera.position.x += (cameraOffset.x - camera.position.x) * easing/10;
 		camera.position.y += (cameraOffset.y - camera.position.y) * easing/5;
@@ -727,7 +818,7 @@ var cameraView = function (cycle) {
 
 	else if (view === 1) {
 	 // chase
-		relativeCameraOffset = new THREE.Vector3(-40-(5*cycle.speed),15+(20*cycle.speed),0);
+		relativeCameraOffset = new THREE.Vector3(-40-(5*cycle.speed), 15+(20*cycle.speed), 0);
 		cameraOffset = relativeCameraOffset.applyMatrix4( cycle.matrixWorld );
 		camera.position.x += (cameraOffset.x - camera.position.x) * easing;
 		camera.position.y += (cameraOffset.y - camera.position.y) * easing;
@@ -746,7 +837,7 @@ var cameraView = function (cycle) {
 
 	else if (view === 4) {
 	 // cockpit
-		relativeCameraOffset = new THREE.Vector3(-2+(2.5*cycle.speed),0,0);
+		relativeCameraOffset = new THREE.Vector3(-2+(2.5*cycle.speed), 0, 0);
 		cameraOffset = relativeCameraOffset.applyMatrix4( cycle.matrixWorld );
 		camera.position.x += (cameraOffset.x - camera.position.x) * 0.5;
 		camera.position.y = 2;
@@ -765,7 +856,7 @@ var cameraView = function (cycle) {
 
 var audioMixing = function (cycle) {
 
-	engineSound.playbackRate.value = cycle.speed/1.3;
+	//engineSound.playbackRate.value = cycle.speed/1.3;
 	
 	cycleSounds.panner.setPosition(cycle.position.x, cycle.position.y, cycle.position.z);
 	ctx.listener.setPosition(camera.position.x, camera.position.y, camera.position.z);
@@ -832,12 +923,14 @@ var changeVelocity = function (cycle) {
 		cycle.currentWall.position.z = cycle.position.z;
 		cycle.currentWall.scale.x = 0.0001;
 		cycle.walls.add(cycle.currentWall);
-		addTurnCoords(cycle);
+		//addCycleTurnCoords(cycle);
 
 		if (cycle.lastDir !== undefined) { // after spawn
+
+			addCycleTurnCoords(cycle);
 			
 			turnSound = playSound(bufferLoader.bufferList[1], 0.7, 10, false);
-			collisionHandled = false;
+			cycle.collisionHandled = false;
 
 			cycle.targetSpeed = constrainSpeed(cycle.speed*turnSpeedFactor);
 			friction = 0.08;
@@ -848,51 +941,55 @@ var changeVelocity = function (cycle) {
 
 	cycle.speed = cycle.speed + (cycle.targetSpeed - cycle.speed) * friction;
 
-	updateGauge(speedGauge, cycle.speed);
+	if (cycle === lightcycle1) {
+		updateGauge(speedGauge, cycle.speed);
+	}
 };
 
 
 var moveStuff = function (cycle) {
-	
-	cycle.translateX(cycle.speed);  // move cycle forward
+	if (cycle.collision === false) {
 
-	cycle.currentWall.scale.x += cycle.speed;  // grow wall
-	cycle.currentWall.material.map.repeat.x = cycle.currentWall.scale.x / wallTextureProportion;
-	
-	cycle.walls.netLength += cycle.speed;
+		cycle.translateX(cycle.speed);  // move cycle forward
 
-	if (cycle.walls.netLength > maxTailLength) {
-
-		cycle.walls.children[0].scale.x -= cycle.speed; // shrink wrong side of last wall
-		cycle.walls.children[0].translateX(cycle.speed); // re-connect last wall
-		cycle.walls.children[0].material.map.repeat.x = -(cycle.walls.children[0].scale.x / wallTextureProportion);
+		cycle.currentWall.scale.x += cycle.speed;  // grow wall
+		cycle.currentWall.material.map.repeat.x = cycle.currentWall.scale.x / wallTextureProportion;
 		
-		cycle.walls.netLength -= cycle.speed;
+		cycle.walls.netLength += cycle.speed;
+
+		if (cycle.walls.netLength > maxTailLength) {
+
+			cycle.walls.children[0].scale.x -= cycle.speed; // shrink wrong side of last wall
+			cycle.walls.children[0].translateX(cycle.speed); // re-connect last wall
+			cycle.walls.children[0].material.map.repeat.x = -(cycle.walls.children[0].scale.x / wallTextureProportion);
+			
+			cycle.walls.netLength -= cycle.speed;
 
 
-		if (cycle.turnCoords[0].wallDir === 0) {
-			cycle.turnCoords[0].z += cycle.speed;
-		}
-		else if (cycle.turnCoords[0].wallDir === 1) {
-			cycle.turnCoords[0].x += cycle.speed;
-		}
-		else if (cycle.turnCoords[0].wallDir === 2) {
-			cycle.turnCoords[0].z -= cycle.speed;
-		}
-		else if (cycle.turnCoords[0].wallDir === 3) {
-			cycle.turnCoords[0].x -= cycle.speed;
-		}
+			if (cycle.turnCoords[0].wallDir === 0) {
+				cycle.turnCoords[0].z += cycle.speed;
+			}
+			else if (cycle.turnCoords[0].wallDir === 1) {
+				cycle.turnCoords[0].x += cycle.speed;
+			}
+			else if (cycle.turnCoords[0].wallDir === 2) {
+				cycle.turnCoords[0].z -= cycle.speed;
+			}
+			else if (cycle.turnCoords[0].wallDir === 3) {
+				cycle.turnCoords[0].x -= cycle.speed;
+			}
 
 
-		if (cycle.walls.children[0].scale.x <= 0 && cycle.walls.children.length > 0) {
-			cycle.walls.remove(cycle.walls.children[0]);
-			cycle.turnCoords.splice(0,1);
+			if (cycle.walls.children[0].scale.x <= 0 && cycle.walls.children.length > 0) {
+				cycle.walls.remove(cycle.walls.children[0]);
+				cycle.turnCoords.splice(0,1);
+			}
 		}
 	}
 };
 
 
-var activePlayers = [];
+
 
 
 var animate = function () {
@@ -903,26 +1000,24 @@ var animate = function () {
 	
 	if (paused === false) {
 
-		if (lightcycle1.alive) {
-			executeTurn(lightcycle1);
-			changeVelocity(lightcycle1);
-			wallCheck(lightcycle1);
-			wallAccelCheck(lightcycle1);
-			if (lightcycle1.collision === false) {
-				moveStuff(lightcycle1);
+		activePlayers.forEach( function (cycle) {
+			if (cycle.alive) {
+				executeTurn(cycle);
+				changeVelocity(cycle);
+				wallCheck(cycle);
+				wallAccelCheck(cycle);
+				autopilotWallCheck(cycle);
+				moveStuff(cycle);
+				handleRubber(cycle);
 			}
-			handleRubber(lightcycle1);
-		}
-		
-		for (var r = 0; r < RENDER_LIST.length; r += 1) {
-			RENDER_LIST[r]();
-		}
-	
-		audioMixing(lightcycle1);
-		cameraView(lightcycle1);
-		//cameraControls.target.set(lightcycle1.position.x, lightcycle1.position.y, lightcycle1.position.z);
+			audioMixing(cycle);
+			cameraView(activePlayers[viewTarget]);
+			
+			cycle.RENDER_LIST.forEach( function (el, i) {
+				el();
+			});
+		});
 	}
-
 	
 	stats.update();
 	renderer.render(scene, camera);
@@ -930,21 +1025,17 @@ var animate = function () {
 
 
 
-
-
-
 var startGame = function (e) {
 	if (e.keyCode === 80) {
 		document.querySelector('#welcome-msg').style.visibility = "hidden";
 		document.removeEventListener('keydown', startGame);
-		spawnCycle(lightcycle1, 0, 0);
+		lightcycle1 = spawnCycle(lightcycle1, -150, 0, 1, false);
+		lightcycle2 = spawnCycle(lightcycle2, 150, 10, 3, true);
 		audioMixing(lightcycle1);
 		cameraControls.target = lightcycle1.position;
 	}
 };
 document.addEventListener('keydown', startGame);
-
-scene.add(lightcycle1);
 
 
 animate();

@@ -2,8 +2,8 @@ var ctx = new AudioContext();
 var bufferLoader = new BufferLoader(
     ctx,
     [
-      "sounds/CLcyclrun.wav",
-      "sounds/CLexpl.wav",
+      "sounds/AAcyclrun.wav",
+      "sounds/AAexpl.wav",
       "sounds/energy.mp3",
       "sounds/morph.mp3"
     ]
@@ -23,6 +23,7 @@ cycleSounds.panner.connect(ctx.destination);
 
 
 var playSound = function(buffer, vol, pitch, loop) {
+    
     var src = ctx.createBufferSource();
     src.gainNode = ctx.createGain();
 
