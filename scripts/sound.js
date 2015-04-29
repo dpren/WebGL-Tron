@@ -2,33 +2,35 @@ var ctx = new AudioContext();
 var bufferLoader = new BufferLoader(
     ctx,
     [
-      "sounds/AAcyclrun.wav",
+      "sounds/radb.m4a",
       "sounds/AAexpl.wav",
       "sounds/energy.mp3",
-      "sounds/morph.mp3"
+      "sounds/morph.mp3",
+      "sounds/CLcyclrun.wav"
     ]
 );
 bufferLoader.load();
 
 
 
-var cycleSounds = ctx.createGain();
-cycleSounds.gain.value = 1;
-cycleSounds.panner = ctx.createPanner();
-cycleSounds.panner.panningModel = "equalpower"; // "HRTF" realism, "equalpower" performance
+// cycle.audio = ctx.createGain();
+// cycle.audio.gain.value = 1;
 
-cycleSounds.connect(cycleSounds.panner);
-cycleSounds.panner.connect(ctx.destination);
+// cycle.audio.panner = ctx.createPanner();
+// cycle.audio.panner.panningModel = "equalpower";
+
+// cycle.audio.connect(cycle.audio.panner);
+// cycle.audio.panner.connect(ctx.destination);
 
 
 
-var playSound = function(buffer, vol, pitch, loop) {
+var playSound = function(buffer, vol, pitch, loop, output) {
     
     var src = ctx.createBufferSource();
     src.gainNode = ctx.createGain();
 
     src.connect(src.gainNode);
-    src.gainNode.connect(cycleSounds);
+    src.gainNode.connect(output);
 
     src.buffer = buffer;
     src.gainNode.gain.value = vol;
@@ -42,8 +44,8 @@ var playSound = function(buffer, vol, pitch, loop) {
 
 
 
-var engineSound;
-var explosionSound;
-var turnSound;
-var bounceSound;
-var morphSound;
+// var engineSound;
+// var explosionSound;
+// var turnSound;
+// var bounceSound;
+// var morphSound;

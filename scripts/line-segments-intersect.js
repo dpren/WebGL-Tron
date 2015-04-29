@@ -21,7 +21,7 @@ function doLineSegmentsIntersect(p, p2, q, q2) {
 	return (t > 0) && (t < 1) && (u > 0) && (u < 1);
 }
 
-function doAccelLineSegmentsIntersect(p, p2, q, q2) {
+function doAccelLineSegmentsIntersect(p, p2, q, q2, cycle) {
 	var r = subtractPoints(p2, p);
 	var s = subtractPoints(q2, q);
 
@@ -41,7 +41,7 @@ function doAccelLineSegmentsIntersect(p, p2, q, q2) {
 
 	if ((t >= 0) && (t <= 1) && (u >= 0) && (u <= 1)) {
 
-		var distFromCycle = ((p.x + t * r.x)-lightcycle1.position.x) + ((p.z + t * r.z)-lightcycle1.position.z);
+		var distFromCycle = ((p.x + t * r.x)-cycle.position.x) + ((p.z + t * r.z)-cycle.position.z);
 		var distFromCycleAbsolute = Math.abs( distFromCycle );
 
 		return {
@@ -61,7 +61,6 @@ function doAccelLineSegmentsIntersect(p, p2, q, q2) {
 function crossProduct(point1, point2) {
 	return point1.x * point2.z - point1.z * point2.x;
 }
-
 
 function subtractPoints(point1, point2) {
 	var result = {};

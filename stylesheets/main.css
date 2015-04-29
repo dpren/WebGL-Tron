@@ -42,8 +42,16 @@ b {
 }
 
 #press-z {
-	font-family:  nicefont, sans-serif;
+	font-family:  fontawesome, sans-serif;
 	opacity: 0.4;
+	visibility: hidden;
+	margin-bottom: 10px;
+}
+
+#press-x {
+	font-family:  fontawesome, sans-serif;
+	opacity: 0.4;
+	visibility: hidden;
 }
 
 #welcome-msg {
