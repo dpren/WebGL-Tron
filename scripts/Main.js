@@ -577,6 +577,7 @@ var handleCollision = function (cycle, wn, el) {
 var wallCheck = function (cycle) {
 	// bug: if player turns (creating new wall) right after speeding through a wall, the (now previous) intersection goes undetected.
 	var cycleTrajectory = cycle.clone().translateX( cycle.rubberMinDistance );
+	var length = cycle.turnCoords.length;
 	var intersect;
 	var intersectOther;
 	var intersectOtherLatest;
@@ -591,7 +592,7 @@ var wallCheck = function (cycle) {
 			for (w = 1; w < el.turnCoords.length-2; w += 1) {  // don't check latest two
 				
 				intersect = doLineSegmentsIntersect(
-													cycle.turnCoords[cycle.turnCoords.length-1],
+													cycle.turnCoords[length-1],
 													cycleTrajectory.position,
 													el.turnCoords[w-1],
 													el.turnCoords[w]
@@ -608,7 +609,7 @@ var wallCheck = function (cycle) {
 			for (w = 1; w < el.turnCoords.length; w += 1) {  // check all but latest
 
 				intersectOther = doLineSegmentsIntersect(
-													cycle.turnCoords[cycle.turnCoords.length-1],
+													cycle.turnCoords[length-1],
 													cycleTrajectory.position,
 													el.turnCoords[w-1],
 													el.turnCoords[w]
@@ -621,7 +622,7 @@ var wallCheck = function (cycle) {
 			}
 
 			intersectOtherLatest = doLineSegmentsIntersect(  // latest wall being formed
-												cycle.turnCoords[cycle.turnCoords.length-1],
+												cycle.turnCoords[length-1],
 												cycleTrajectory.position,
 												el.turnCoords[el.turnCoords.length-1],
 												el.position
@@ -735,7 +736,7 @@ var autopilotWallCheck = function (cycle) {
 	if (cycle.autoPilot === true) {
 
 		var cycleTrajectory = cycle.clone().translateX( 10 ); // how far ahead to check
-		var length = cycle.turnCoords.length;
+		var length = cycle.turnCoords.length; 
 		var intersect;
 		var intersectOther;
 		var intersectOtherLatest;
@@ -748,7 +749,7 @@ var autopilotWallCheck = function (cycle) {
 				for (w = 1; w < el.turnCoords.length-2; w += 1) {  // don't check latest two
 					
 					intersect = doLineSegmentsIntersect(
-														cycle.turnCoords[cycle.turnCoords.length-1],
+														cycle.turnCoords[length-1],
 														cycleTrajectory.position,
 														el.turnCoords[w-1],
 														el.turnCoords[w]
@@ -764,7 +765,7 @@ var autopilotWallCheck = function (cycle) {
 				for (w = 1; w < el.turnCoords.length; w += 1) {  // check all but latest
 
 					intersectOther = doLineSegmentsIntersect(
-														cycle.turnCoords[cycle.turnCoords.length-1],
+														cycle.turnCoords[length-1],
 														cycleTrajectory.position,
 														el.turnCoords[w-1],
 														el.turnCoords[w]
@@ -775,8 +776,8 @@ var autopilotWallCheck = function (cycle) {
 					}
 				}
 
-				intersectOtherLatest = doLineSegmentsIntersect(  // latest wall being formed
-													cycle.turnCoords[cycle.turnCoords.length-1],
+				intersectOtherLatest = doLineSegmentsIntersect(  // latest wall
+													cycle.turnCoords[length-1],
 													cycleTrajectory.position,
 													el.turnCoords[el.turnCoords.length-1],
 													el.position

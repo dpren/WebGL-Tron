@@ -35,6 +35,11 @@ b {
 	color: yellow;
 }
 
+a {
+	text-decoration: none;
+	color: yellow;
+}
+
 #pause-msg {
 	font-family:  fontawesome, sans-serif;
 	opacity: 0.3;
