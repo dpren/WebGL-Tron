@@ -39,7 +39,6 @@ var stats = new Stats();
 var pauseMsg = document.querySelector('#pause-msg');
 var pressZ = document.querySelector('#press-z');
 var pressX = document.querySelector('#press-x');
-
 var rubberGauge = document.querySelector('#rubber-gauge');
 var speedGauge = document.querySelector('#speed-gauge');
 
@@ -54,6 +53,8 @@ var paused = true;
 var showInfo = false;
 var view = 0;
 var viewTarget = 0;
+
+var gridSize = 450;
 
 var easing = 0.08;
 var friction = 0.005;
@@ -83,7 +84,6 @@ var constrain = function (min, max) {
 	};
 };
 var constrainSpeed = constrain(regularSpeed*.7, 5);
-
 
 
 
@@ -134,7 +134,6 @@ var lookAheadLine2 = new THREE.Line(lookAhead, lineMaterial);
 
 
 /*—–––––––––––––––line grid—–––––––––––––––*/
-var gridSize = 450;
 var gridHelper = new THREE.GridHelper(gridSize, 6);
 gridHelper.setColors(0x555555,0x555555);
 scene.add(gridHelper);
@@ -308,10 +307,10 @@ var createWall = function (colorCode) {
 
 	var wallGeometry = new THREE.BoxGeometry( 1, 0.1, 4 );
 
-		wallGeometry.faceVertexUvs[0][4] = [new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 0)];
-		wallGeometry.faceVertexUvs[0][5] = [new THREE.Vector2(0, 1), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)];		
-		wallGeometry.applyMatrix( new THREE.Matrix4().makeRotationX(-halfPi) );
-		wallGeometry.applyMatrix( new THREE.Matrix4().makeTranslation( 0.5, 2, 0 ) );
+	wallGeometry.faceVertexUvs[0][4] = [new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 0)];
+	wallGeometry.faceVertexUvs[0][5] = [new THREE.Vector2(0, 1), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)];		
+	wallGeometry.applyMatrix( new THREE.Matrix4().makeRotationX(-halfPi) );
+	wallGeometry.applyMatrix( new THREE.Matrix4().makeTranslation( 0.5, 2, 0 ) );
 
 
 	return new THREE.Mesh(wallGeometry, wallMaterial);
@@ -815,26 +814,27 @@ var changeViewTarget = function (i) {
 };
 
 var fixCockpitCam = function () {
-	activePlayers.forEach(function(el){
-		el.walls.children[el.walls.children.length-1].visible = true;
+	activePlayers.forEach(function(el) {
+		if (el.walls.children.length) {
+			el.walls.children[el.walls.children.length-1].visible = true;
+		}
 		el.visible = true;
 	});
-}
+};
 
 
-var onKeyDown = function (e) {
+var handleKeyDown = function (e) { // via KeyboardState.js
 	switch ( e.keyCode ) {
 		case 70: // left
 		case 68:
-		case 83:
-		case 65: 	
-					lightcycle1.turnStack.push(turnLeft(lightcycle1));
+		case 83: 	
+		case 65: 	lightcycle1.turnStack.push(turnLeft(lightcycle1));
 					break;
+
 		case 74: // right
 		case 75:
 		case 76:
-		case 186: 	
-					lightcycle1.turnStack.push(turnRight(lightcycle1));
+		case 186:   lightcycle1.turnStack.push(turnRight(lightcycle1));
 					break;
 
 		case 80: // p
@@ -848,7 +848,7 @@ var onKeyDown = function (e) {
 						lightcycle1.audio.gain.value = 0;
 						lightcycle2.audio.gain.value = 0;
 					}
-					lightcycle1.turnStack = []; // clear in case turn keys are pressed while paused
+					lightcycle1.turnStack = []; // clear in case turn keys were pressed while paused
 					break;
 		case 67: // c
 					view += 1;
@@ -871,7 +871,7 @@ var onKeyDown = function (e) {
 					break;
 		case 90: // z
 					if (lightcycle1.respawnAvailable === true) {
-						lightcycle1.turnStack = []; // clear in case turn keys are pressed while dead
+						lightcycle1.turnStack = []; // clear in case turn keys were pressed while dead
 						lightcycle1 = initCycle(lightcycle1, -150, 0, 1, false);
 						lightcycle1.engineSound = playSound(bufferLoader.bufferList[0], 0.5, 1, true, lightcycle1.audio);
 						viewTarget = activePlayers.indexOf(lightcycle1);
@@ -881,7 +881,7 @@ var onKeyDown = function (e) {
 					break;
 		case 88: // x
 					if (lightcycle2.respawnAvailable === true) {
-						lightcycle2.turnStack = []; // clear in case turn keys are pressed while dead
+						lightcycle2.turnStack = []; // clear in case turn keys were pressed while dead
 						lightcycle2 = initCycle(lightcycle2, 150, 0, 1, true);
 						lightcycle2.engineSound = playSound(bufferLoader.bufferList[4], 0.5, 1, true, lightcycle2.audio);
 						fixCockpitCam();
@@ -941,8 +941,6 @@ var onKeyDown = function (e) {
 					break;
     }
 };
-
-document.addEventListener('keydown', onKeyDown, true);
 
 
 
@@ -1029,12 +1027,12 @@ var audioMixing = function (cycle) {
 
 var changeVelocity = function (cycle) {
 
-	if (keyboard.pressed('space') && cycle.playerID === 1) {
+	if (keyboard.keyCodes[32] && cycle.playerID === 1) { // space
 
 		cycle.targetSpeed = constrainSpeed(cycle.speed*brakeFactor);
 		friction = 0.03;
 
-	} else if (keyboard.pressed('b') && cycle.playerID === 1) {
+	} else if (keyboard.keyCodes[66] && cycle.playerID === 1) { // b
 
 		cycle.targetSpeed = constrainSpeed(cycle.speed*boostFactor);
 		friction = 0.05;
