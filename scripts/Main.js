@@ -46,6 +46,7 @@ var speedGauge = document.querySelector('#speed-gauge');
 
 
 
+var gridSize = 450;
 
 var activePlayers = [];
 
@@ -54,7 +55,6 @@ var showInfo = false;
 var view = 0;
 var viewTarget = 0;
 
-var gridSize = 450;
 
 var easing = 0.08;
 var friction = 0.005;
@@ -232,7 +232,6 @@ var createLightcycle = (function (x, z, dir, colorCode, lightUpColor, ai, player
 		cycle.lastDir = undefined;
 		cycle.lastTurnTime = 0;
 		cycle.turnStack = [];
-		cycle.turnCoords = [];
 		
 		cycle.walls = new THREE.Object3D();
 		cycle.walls.children = [];
@@ -294,7 +293,9 @@ var createWall = function (colorCode) {
 	var texture = THREE.ImageUtils.loadTexture( textureType );
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.needsUpdate = true;
+	if (texture.image) {
 		wallTextureProportion = (texture.image.width / texture.image.height) * 10; // *4 is actual size
+	}
 		
 
 	var wallMaterial = new THREE.MeshLambertMaterial({
@@ -343,14 +344,6 @@ var animateCycle = function (cycle) {
 };
 
 
-var addTurnCoords = function (cycle) {
-	cycle.turnCoords.push({
-		x: cycle.position.x,
-		z: cycle.position.z,
-		wallDir: cycle.dir
-	});
-};
-
 
 var addWall = function (cycle) {
 	cycle.currentWall = createWall(cycle.color);
@@ -366,9 +359,8 @@ var initCycle = function (cycle, x, z, dir, ai) {
 
 	cycle = createLightcycle(x, z, dir, cycle.color, cycle.lightUpColor, ai, cycle.playerID);
 
-	scene.add(cycle);
 
-	addTurnCoords(cycle);
+	scene.add(cycle);
 	
 	rubberVisuals(cycle);
 
@@ -387,11 +379,8 @@ var initCycle = function (cycle, x, z, dir, ai) {
 };
 
 
-// var spawnCycle = function (cycle) {
 
-// 	cycle.engineSound = playSound(bufferLoader.bufferList[0], 0.5, 1, true, cycle.audio);
 
-// };
 
 
 var turnLeft = function (cycle) {
@@ -576,7 +565,7 @@ var handleCollision = function (cycle, wn, el) {
 var wallCheck = function (cycle) {
 	// bug: if player turns (creating new wall) right after speeding through a wall, the (now previous) intersection goes undetected.
 	var cycleTrajectory = cycle.clone().translateX( cycle.rubberMinDistance );
-	var length = cycle.turnCoords.length;
+	var length = cycle.walls.children.length;
 	var intersect;
 	var intersectOther;
 	var intersectOtherLatest;
@@ -585,16 +574,17 @@ var wallCheck = function (cycle) {
 
 
 	activePlayers.forEach( function (el) {  // check current cycle against each active players walls
+		var elLength = el.walls.children.length;
 		
 		if (el.playerID === cycle.playerID) {  // own walls
 
-			for (w = 1; w < el.turnCoords.length-2; w += 1) {  // don't check latest two
+			for (w = 1; w < elLength-2; w += 1) {  // don't check latest two
 				
 				intersect = doLineSegmentsIntersect(
-													cycle.turnCoords[length-1],
+													cycle.walls.children[length-1].position,
 													cycleTrajectory.position,
-													el.turnCoords[w-1],
-													el.turnCoords[w]
+													el.walls.children[w-1].position,
+													el.walls.children[w].position
 													);
 				if (intersect === true) {
 
@@ -605,13 +595,13 @@ var wallCheck = function (cycle) {
 
 		} else { // other players
 
-			for (w = 1; w < el.turnCoords.length; w += 1) {  // check all but latest
+			for (w = 1; w < elLength; w += 1) {  // check all but latest
 
 				intersectOther = doLineSegmentsIntersect(
-													cycle.turnCoords[length-1],
+													cycle.walls.children[length-1].position,
 													cycleTrajectory.position,
-													el.turnCoords[w-1],
-													el.turnCoords[w]
+													el.walls.children[w-1].position,
+													el.walls.children[w].position
 													);
 				if (intersectOther === true) {
 
@@ -621,15 +611,15 @@ var wallCheck = function (cycle) {
 			}
 
 			intersectOtherLatest = doLineSegmentsIntersect(  // latest wall being formed
-												cycle.turnCoords[length-1],
+												cycle.walls.children[length-1].position,
 												cycleTrajectory.position,
-												el.turnCoords[el.turnCoords.length-1],
+												el.walls.children[elLength-1].position,
 												el.position
 												);
 			if (intersectOtherLatest === true) {
 				
 				cycle.collision = true;
-				handleCollision(cycle, el.turnCoords.length-1, el);
+				handleCollision(cycle, elLength-1, el);
 			}
 		}
 	});
@@ -654,16 +644,17 @@ var wallAccelCheck = function (cycle) {
 	cycle.wallAccel = false;
 
 	activePlayers.forEach( function (el) {
-			
+		var elLength = el.walls.children.length;
+
 		if (el.playerID === cycle.playerID) {  // own walls
 
-			for (w = 1; w < el.turnCoords.length-1; w += 1) {  // check all but latest
+			for (w = 1; w < elLength-1; w += 1) {  // check all but latest
 
 				accelIntersect = doAccelLineSegmentsIntersect(
 														cycleLeft.position,
 														cycleRight.position,
-														el.turnCoords[w-1],
-														el.turnCoords[w],
+														el.walls.children[w-1].position,
+														el.walls.children[w].position,
 														cycle
 														);
 				if (accelIntersect.check === true) {
@@ -676,13 +667,13 @@ var wallAccelCheck = function (cycle) {
 
 		} else {  // other players
 
-			for (w = 1; w < el.turnCoords.length; w += 1) {  // check all but latest
+			for (w = 1; w < elLength; w += 1) {  // check all but latest
 				
 				accelIntersectOthers = doAccelLineSegmentsIntersect(
 														cycleLeft.position,
 														cycleRight.position,
-														el.turnCoords[w-1],
-														el.turnCoords[w],
+														el.walls.children[w-1].position,
+														el.walls.children[w].position,
 														cycle
 														);
 				if (accelIntersectOthers.check === true) {
@@ -695,7 +686,7 @@ var wallAccelCheck = function (cycle) {
 			accelIntersectOthersLatest = doAccelLineSegmentsIntersect(  // latest wall being formed
 													cycleLeft.position,
 													cycleRight.position,
-													el.turnCoords[el.turnCoords.length-1],
+													el.walls.children[elLength-1].position,
 													el.position,
 													cycle
 													);
@@ -712,16 +703,6 @@ var wallAccelCheck = function (cycle) {
 
 var activateAI = function (cycle) {
 	if ((time - cycle.lastTurnTime) > 0.2) {
-
-		/*if (cycle.wallAccel) {
-			console.log(cycle.wallAccelSide);
-			if (cycle.wallAccelSide < 0) {
-				turnStack.push(turnLeft(cycle));
-			} else if (cycle.wallAccelSide > 0) {
-				turnStack.push(turnRight(cycle));
-			}
-		} else*/
-
 		if (Math.random() > 0.5) {
 			cycle.turnStack.push(turnLeft(cycle));
 		} else {
@@ -735,23 +716,24 @@ var autopilotWallCheck = function (cycle) {
 	if (cycle.autoPilot === true) {
 
 		var cycleTrajectory = cycle.clone().translateX( 10 ); // how far ahead to check
-		var length = cycle.turnCoords.length; 
+		var length = cycle.walls.children.length; 
 		var intersect;
 		var intersectOther;
 		var intersectOtherLatest;
 		var w;
 
 		activePlayers.forEach( function (el) {
-			
+			var elLength = el.walls.children.length;
+
 			if (el.playerID === cycle.playerID) {  // own walls
 
-				for (w = 1; w < el.turnCoords.length-2; w += 1) {  // don't check latest two
+				for (w = 1; w < elLength; w += 1) {  // don't check latest two
 					
 					intersect = doLineSegmentsIntersect(
-														cycle.turnCoords[length-1],
+														cycle.walls.children[length-1].position,
 														cycleTrajectory.position,
-														el.turnCoords[w-1],
-														el.turnCoords[w]
+														el.walls.children[w-1].position,
+														el.walls.children[w].position
 														);
 					if (intersect === true) {
 						activateAI(cycle);
@@ -761,13 +743,13 @@ var autopilotWallCheck = function (cycle) {
 
 			} else { // other players
 
-				for (w = 1; w < el.turnCoords.length; w += 1) {  // check all but latest
+				for (w = 1; w < elLength; w += 1) {  // check all but latest
 
 					intersectOther = doLineSegmentsIntersect(
-														cycle.turnCoords[length-1],
+														cycle.walls.children[length-1].position,
 														cycleTrajectory.position,
-														el.turnCoords[w-1],
-														el.turnCoords[w]
+														el.walls.children[w-1].position,
+														el.walls.children[w].position
 														);
 					if (intersectOther === true) {
 						activateAI(cycle);
@@ -776,9 +758,9 @@ var autopilotWallCheck = function (cycle) {
 				}
 
 				intersectOtherLatest = doLineSegmentsIntersect(  // latest wall
-													cycle.turnCoords[length-1],
+													cycle.walls.children[length-1].position,
 													cycleTrajectory.position,
-													el.turnCoords[el.turnCoords.length-1],
+													el.walls.children[elLength-1].position,
 													el.position
 													);
 				if (intersectOtherLatest === true) {
@@ -821,6 +803,8 @@ var fixCockpitCam = function () {
 		el.visible = true;
 	});
 };
+
+
 
 
 var handleKeyDown = function (e) { // via KeyboardState.js
@@ -873,6 +857,7 @@ var handleKeyDown = function (e) { // via KeyboardState.js
 					if (lightcycle1.respawnAvailable === true) {
 						lightcycle1.turnStack = []; // clear in case turn keys were pressed while dead
 						lightcycle1 = initCycle(lightcycle1, -150, 0, 1, false);
+						addWall(lightcycle1);
 						lightcycle1.engineSound = playSound(bufferLoader.bufferList[0], 0.5, 1, true, lightcycle1.audio);
 						viewTarget = activePlayers.indexOf(lightcycle1);
 						cameraControls.target = activePlayers[viewTarget].position; // look at your shiny new cycle
@@ -883,6 +868,7 @@ var handleKeyDown = function (e) { // via KeyboardState.js
 					if (lightcycle2.respawnAvailable === true) {
 						lightcycle2.turnStack = []; // clear in case turn keys were pressed while dead
 						lightcycle2 = initCycle(lightcycle2, 150, 0, 1, true);
+						addWall(lightcycle2);
 						lightcycle2.engineSound = playSound(bufferLoader.bufferList[4], 0.5, 1, true, lightcycle2.audio);
 						fixCockpitCam();
 					}
@@ -1064,8 +1050,6 @@ var changeVelocity = function (cycle) {
 	    addWall(cycle);
 
 	    if (cycle.lastDir !== undefined) { // post-spawn turns
-	    	
-	    	addTurnCoords(cycle);
 			
 			cycle.turnSound = playSound(bufferLoader.bufferList[1], 0.7, 10, false, cycle.audio);
 
@@ -1105,30 +1089,21 @@ var moveStuff = function (cycle) {
 			cycle.walls.netLength -= cycle.speed;
 
 
-			if (cycle.turnCoords[0].wallDir === 0) {
-				cycle.turnCoords[0].z += cycle.speed;
-			}
-			else if (cycle.turnCoords[0].wallDir === 1) {
-				cycle.turnCoords[0].x += cycle.speed;
-			}
-			else if (cycle.turnCoords[0].wallDir === 2) {
-				cycle.turnCoords[0].z -= cycle.speed;
-			}
-			else if (cycle.turnCoords[0].wallDir === 3) {
-				cycle.turnCoords[0].x -= cycle.speed;
-			}
-
-
 			if (cycle.walls.children[0].scale.x <= 0 && cycle.walls.children.length > 0) {
 				cycle.walls.remove(cycle.walls.children[0]);
-				cycle.turnCoords.splice(0,1);
 			}
 		}
 	}
 };
 
 
+var moveCycle = function (oldCycle) {
+	var c = oldCycle; 
+};
 
+var renderCycle = function (c) {
+	lightcycle1.position = c.position; 
+};
 
 
 var animate = function () {
@@ -1166,15 +1141,16 @@ var animate = function () {
 	}
 
 
-
 	stats.update();
 	renderer.render(scene, camera);
 };
 
 
-
 lightcycle1 = initCycle(lightcycle1, -300, -5, 1, false);
+addWall(lightcycle1);
 lightcycle2 = initCycle(lightcycle2, 300, 0, 3, true);
+addWall(lightcycle2);
+
 camera.lookAt(lightcycle1.position);
 
 
