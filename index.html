@@ -3,19 +3,20 @@
 <head>
     <meta charset="utf-8">
     <title>Tron</title>
-    <link rel="stylesheet" href="stylesheets/main.css"/>
+    <link rel="stylesheet" href="css/main.css"/>
     <link href="fonts/nicefont.woff" />
     <link href="fonts/fontawesome.woff" />
 
-    <script src="scripts/three.min.js"></script>
-
-    <script src='scripts/THREEx.KeyboardState.js'></script>
-    <script src='scripts/THREEx.FullScreen.js'></script>
-    <script src="scripts/OrbitControls.js"></script>
-    <script src="scripts/stats.min.js"></script>
-    <script src="scripts/line-segments-intersect.js"></script>
-    <script src="scripts/buffer-loader.js"></script>
+    <script src="scripts/lib/three.min.js"></script>
+    <script src="scripts/lib/ramda.min.js"></script>
+    <script src='scripts/lib/FullScreen.js'></script>
+    <script src="scripts/lib/OrbitControls.js"></script>
+    <script src="scripts/lib/stats.min.js"></script>
+    <script src="scripts/lib/buffer-loader.js"></script>
     <script src="scripts/sound.js"></script>
+    <script src="scripts/line-intersect.js"></script>
+    <!--<script src="/socket.io/socket.io.js"></script>-->
+    <!--<script src="scripts/socket-client.js"></script>-->
 </head>
 <body>
     <div id="stats"></div>
@@ -60,6 +61,10 @@
     <span id="speed-gauge"></span>
     <p id="speed-label" class="gauge-values">SPEED</p>
     <p id="speed-gauge-min" class="gauge-values">0</p>  <p id="speed-gauge-max" class="gauge-values">5</p>
+
+    <span id="brake-gauge"></span>
+    <p id="brake-label" class="gauge-values">BRAKES</p>
+    <p id="brake-gauge-min" class="gauge-values">0</p>  <p id="brake-gauge-max" class="gauge-values">5</p>
 
     <script src="scripts/Main.js"></script>
 </body>
