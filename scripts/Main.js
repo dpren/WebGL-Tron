@@ -1356,8 +1356,6 @@ var animate = function() {
 
 
 
-
-
 var startGame = function(e) {
 	if (e.keyCode === 80) {
 		document.querySelector('#welcome-msg').style.visibility = "hidden";
