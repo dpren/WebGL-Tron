@@ -2,7 +2,7 @@
 
 
 
-#### [Play demo](http://dpren.github.io/)
+#### [Play demo](http://dpren.github.io/tron)
 
 ##### run locally:
 
