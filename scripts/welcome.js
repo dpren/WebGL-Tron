@@ -39,7 +39,8 @@ var startGame = function(e) {
 			otherPlayers[0] = spawnCycle(otherPlayers[0], 300, 0, 3, true);
 			changeViewTargetTo(0);
 
-			function start() {
+			
+			setTimeout( function () {
 				
 				hideElement(welcome, inputEl);
 				
@@ -47,10 +48,10 @@ var startGame = function(e) {
 				document.addEventListener('keydown', handleKeyDown, false);
 				document.addEventListener('keyup', handleKeyUp, false);
 				THREEx.FullScreen.bindKey();
-
+				
 				pause();
-			};
-			setTimeout(start, 350);
+
+			}, 350);
 		}
 	}
 };
@@ -61,11 +62,8 @@ var initGame = function() {
 	camera.lookAt(player1.position);
 
 	gauge.rubber.max.innerHTML = gauge.rubber.maxVal;
-	//gauge.rubber.maxVal = maxRubber;
 	gauge.speed.max.innerHTML = gauge.speed.maxVal;
-	//gauge.speed.maxVal = maxSpeed;
 	gauge.brakes.max.innerHTML = gauge.brakes.maxVal;
-	//gauge.brakes.maxVal = maxBrakes;
 
 	document.getElementById('usernameInput').focus();
 
