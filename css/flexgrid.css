@@ -1,0 +1,169 @@
+
+
+
+.left {
+  text-align: left;
+}
+.right {
+  text-align: right;
+}
+.center {
+  text-align: center;
+}
+
+.row {
+  margin: 0.1rem;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.col {
+  flex: 1 1 8%;
+  margin: 0 0 0.0rem 0;
+  padding: 0.0em 0px;
+  box-sizing: border-box;
+}
+
+.nowrap {
+  flex-wrap: nowrap;
+}
+
+/* nested grids */
+.row .row, .row.nested {
+  flex: 1 1 auto;
+  margin-top: 0.0em;
+}
+
+/* full width grids */
+.row.wide-fit {
+  margin-left: -10px;
+  margin-right: -10px;
+}
+
+/* center grids */
+.row.center {
+  justify-content: center;
+}
+
+.center .col {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+/* columns widths */
+
+.col-span-1 {
+  flex-basis: 8.3333%;
+}
+
+.col-span-2 {
+  flex-basis: 16.6666%; 
+}
+
+.col-span-3 {
+  flex-basis: 25%;
+}
+
+.col-span-4 {
+  flex-basis: 33.3333%;
+}
+
+.col-span-5 {
+  flex-basis: 41.6666%;
+}
+
+.col-span-6 {
+  flex-basis: 50%;
+}
+
+.col-span-7 {
+  flex-basis: 58.3333%;
+}
+
+.col-span-8 {
+  flex-basis: 66.6666%;
+}
+
+.col-span-9 {
+  flex-basis: 75%;
+}
+
+.col-span-10 {
+  flex-basis: 83.3333%;
+}
+
+.col-span-11 {
+  flex-basis: 91.6666%;
+}
+
+.col-span-12 {
+  flex-basis: 100%;
+}
+
+
+
+/* add-ons */
+.fixed-width-550 {
+  flex: 0 0 550px;
+}
+
+.fixed-width-150 {
+  flex: 0 0 150px;
+}
+
+.fixed-width-75 {
+  flex: 0 0 75px;
+}
+
+.spacer {
+  flex: 0 0 50px;
+}
+
+.gauge-width {
+  flex: 0 0 150px;
+  /*margin-left: 50px;*/
+}
+
+
+
+@media all and (max-width: 568px) {
+  .col-span-1,
+  .col-span-2,
+  .col-span-3,
+  .col-span-4,
+  .col-span-5 {
+    flex-basis: 50%;
+  }
+
+  .col-span-6,
+  .col-span-7,
+  .col-span-8,
+  .col-span-9,
+  .col-span-10,
+  .col-span-11 {
+    flex-basis: 100%;
+  }
+
+  .nested .col {
+    flex-basis: 100%;
+  }
+}
+
+
+@media screen and (max-width: 700px) {  
+  .spacer {
+    flex: 0 0 10px;
+  }
+}
+
+
+/* visual aid */
+/*.row {
+  background-color: rgba(0,0,0,0.1);
+}
+.col {
+  background-color: rgba(0,0,0,0.1);
+  background-clip: content-box;
+  border: 1px solid rgba(0,0,0,0.1);
+}*/

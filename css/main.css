@@ -1,11 +1,11 @@
 @font-face {
-    font-family: nicefont;
-    src: url(../fonts/nicefont.woff);
+	font-family: nicefont;
+	src: url(../fonts/nicefont.woff);
 }
 
 @font-face {
-    font-family: fontawesome;
-    src: url(../fonts/fontawesome.woff);
+	font-family: fontawesome;
+	src: url(../fonts/fontawesome.woff);
 }
 
 * {
@@ -40,11 +40,32 @@ a {
 	color: yellow;
 }
 
-#pause-msg {
-	font-family:  fontawesome, sans-serif;
-	opacity: 0.3;
-	margin-bottom: 30px;
+
+
+#welcome-msg {
+	position: absolute;
+	width: 100%;	
+	height: 100%;
+	left: 0;
+	right: 0;
+	margin: 0 auto;
+	background-color: rgba(10,10,10, 0.8);
+
+	color: #dafcf1;	
+	text-shadow: 0px -1px 0px #000, 0 0 20px rgba(218, 252, 241, 0.5);
 }
+
+#promptbox {
+	position: absolute;
+	color: #ffffff;
+	opacity: 0.85;
+	font-family:  nicefont, sans-serif;
+	letter-spacing: 4px;
+	text-align: center;
+	top: 5%;
+	width: 100%;
+}
+
 
 #press-z {
 	font-family:  fontawesome, sans-serif;
@@ -59,99 +80,147 @@ a {
 	visibility: hidden;
 }
 
-#welcome-msg {
-	position: absolute;
-	width: 100%;	
-	height: 100%;
-	left: 0;
-	right: 0;
-	margin: 0 auto;
-	background-color: rgba(10,10,10, 0.8);
+#pause-msg {
+	font-family:  fontawesome, sans-serif;
+	opacity: 0.3;
+	margin-bottom: 30px;
 }
 
-#promptbox {
-	position: absolute;
-	color: #ffffff;
-	opacity: 0.85;
-	font-family:  nicefont, sans-serif;
-	letter-spacing: 4px;
+
+
+
+
+#inputBox {
+	margin: auto;
+	width: 400px;
 	text-align: center;
-	top: 14%;
+	position: relative;
+}
+
+#inputBox::after {
+  content: "";
+  background: url(../images/crt3.gif);
+  /*background-size: 18px 15px;*/
+  opacity: 0.4;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  position: absolute;
+  z-index: -1;   
+}
+
+#usernameInput {
+	background-color: transparent;
+	width: 400px;
+	margin-top: 5px;
+	padding: 10px;
+	border: none;
+	outline: none;
+	color: #fff;
+	font-size: 170%;
+	text-align: center;
+	
+	text-shadow: 0px -1px 0px #000, 0 0 20px rgba(66,172,237, .6);
+	transition: .4s ease;
+}
+
+#usernameInput:focus ~ #underline {
+	width: 400px;
+}
+
+#underline {
+	text-align: center;
+	margin: auto;
+	width: 0px;
+	height: 3px;
+	background: #fff;
+	border: none;
+	transition: .4s ease;
+}
+
+hr {
+	border:none;
+	border-bottom: 1px solid #42ACED;
+	box-shadow: 0px 0px 10px rgba(66,172,237, .5), 0 0 5px rgba(145,2,227,.8);
+}
+
+
+
+
+#chatInput {
+	position: fixed;
+	top: 0px;
+	padding: 5px;
 	width: 100%;
+	font-size: 16px;
+	color: #fff;
+	background-color: transparent;
+	outline: none;
+	border: none;
 }
 
 
 
 
-.gauge-values {
-	position: absolute;
-	color: #ffffff;
-	opacity: 0.85;
-	font-size: 10px;
+
+
+.hud {
+	border:1px solid #42ACED;
+	padding:.5em;
+	border-radius: 5px 0 5px 0;
+	box-shadow: 0px 0px 10px rgba(237,172,66,.5),
+		0 0 5px rgba(145,227,2,.8);
+	position:absolute;
+	left:1em;
+	right:1em;
+	top:1em;
+	bottom:1em;
+}
+
+.btn {
+	padding: 1em;
+	color: #42ACED;
+	border: 2px inset #42ACED;
+	background: transparent;
+	text-shadow: 0px -1px 0px #000, 0 0 20px #42ACED;
+	letter-spacing: .3em;
+	font-weight: light !Important;
+	/*cursor: pointer;*/
+}
+
+/*.btn:hover {
+	background:rgba(0,0,0,0.3);
+}*/
+
+.btn.btn-ok {
+	color: lightgreen;
+	border-color: lime;
+	text-shadow: 0px -1px 0px #000, 0 0 30px lime;
+}
+.btn.btn-warning {
+	color: yellow;
+	border-color: yellow;
+	text-shadow: 0px -1px 0px #000, 0 0 30px yellow;
+}
+.btn.btn-error {
+	color: darkred;
+	border-color: red;
+	text-shadow: 0px -1px 0px #222, 0 0 30px maroon;
 }
 
 
-#rubber-gauge {
-	position: absolute;
-	bottom: 20px;
-	left: 100px;
-	height: 3px;
-	width: 0px;
-	background-color: rgb(0,255,0);
+.spinner {
+  height: 30px;
+  width: 30px;
+  animation: rotation .5s infinite linear;
+  border-left: 3px solid rgba(0, 174, 239, .15);
+  border-right: 3px solid rgba(0, 174, 239, .15);
+  border-bottom: 3px solid rgba(0, 174, 239, .15);
+  border-top: 3px solid rgba(0, 174, 239, .8);
+  border-radius: 100%;
 }
-#rubber-gauge-min {
-	left: 100px;
-	bottom: 5px;
-}
-#rubber-label {
-	left: 155px;
-	bottom: 5px;
-}
-#rubber-gauge-max {
-	left: 245px;
-	bottom: 5px;
-}
-
-
-#speed-gauge {
-	position: absolute;
-	bottom: 20px;
-	left: 350px;
-	height: 3px;
-	width: 0px;
-	background-color: rgb(0,255,0);
-}
-#speed-gauge-min {
-	left: 350px;
-	bottom: 5px;
-}
-#speed-label {
-	left: 405px;
-	bottom: 5px;
-}
-#speed-gauge-max {
-	left: 495px;
-	bottom: 5px;
-}
-
-
-#brake-gauge {
-	position: absolute;
-	bottom: 20px;
-	left: 600px;
-	height: 3px;
-	width: 0px;
-	background-color: rgb(0,255,0);
-}
-#brake-gauge-min {
-	left: 600px;
-	bottom: 5px;
-}
-#brake-label {
-	left: 655px;
-	bottom: 5px;
-}
-#brake-gauge-max {
-	left: 745px;
-	bottom: 5px;
+@keyframes rotation {
+  from {transform: rotate(0deg);}
+  to {transform: rotate(359deg);}
 }

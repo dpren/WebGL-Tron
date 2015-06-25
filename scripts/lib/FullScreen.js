@@ -107,4 +107,4 @@ THREEx.FullScreen.bindKey	= function(opts){
 	};
 }
 
-THREEx.FullScreen.bindKey();
+// THREEx.FullScreen.bindKey();

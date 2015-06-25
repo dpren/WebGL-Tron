@@ -1,71 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Tron</title>
-    <link rel="stylesheet" href="css/main.css"/>
-    <link href="fonts/nicefont.woff" />
-    <link href="fonts/fontawesome.woff" />
-
-    <script src="scripts/lib/three.min.js"></script>
-    <script src="scripts/lib/ramda.min.js"></script>
-    <script src='scripts/lib/FullScreen.js'></script>
-    <script src="scripts/lib/OrbitControls.js"></script>
-    <script src="scripts/lib/stats.min.js"></script>
-    <script src="scripts/lib/buffer-loader.js"></script>
-    <script src="scripts/sound.js"></script>
-    <script src="scripts/line-intersect.js"></script>
-    <!--<script src="/socket.io/socket.io.js"></script>-->
-    <!--<script src="scripts/socket-client.js"></script>-->
+	<meta charset="utf-8">
+	<title>Tron</title>
+	<link rel="stylesheet" href="css/flexgrid.css"/>
+	<link rel="stylesheet" href="css/main.css"/>
+	<link rel="stylesheet" href="css/start-menu.css"/>
+	<link rel="stylesheet" href="css/hud.css"/>
+	<link href="fonts/nicefont.woff" />
+	<link href="fonts/fontawesome.woff" />
+	
+	<script src="scripts/lib/three.min.js"></script>
+	<script src="scripts/lib/ramda.min.js"></script>
+	<script src='scripts/lib/FullScreen.js'></script>
+	<script src="scripts/lib/OrbitControls.js"></script>
+	<script src="scripts/lib/stats.min.js"></script>
+	<script src="scripts/lib/buffer-loader.js"></script>
+	<script src="scripts/sound.js"></script>
+	<script src="scripts/line-intersect.js"></script>
+	<script src="scripts/func.js"></script>
 </head>
 <body>
-    <div id="stats"></div>
-    
-    <div>
-    </div>
+
+	<div id="stats"></div>
+
+	<div id="player-labels"></div>
+
+	<!-- <input id="chatInput" type="text" maxlength="140" /> -->
 
 	<div id="welcome-msg" style="visibility:visible;">
-		<div id="promptbox">
-    		<h4 id="press-z">press Z to respawn</h4>
-            <h4 id="press-x">press X to respawn enemy</h4>
-            <br/>
-            <h1 id="pause-msg">Paused</h1>
-	    	<br/>
-	    	<br/>
-	    	<br/>
-	    	<h3><b>s d f</b> ← turn keys → <b>j k l</b></h3>
-            <br/>
-            <h3><b>space</b> - brake</h3>
-            <br/>
-            <h3><b>w</b> - fullscreen</h3>
-			<h3><b>c</b> - change view</h3>
-			<br/>
-			<h3>press <b>p</b> to unpause</h3>
 
-            <br><br>
-            <br><br>
-            <br><br>
-            <a href="https://www.google.com/chrome/browser/">
-                <img src="images/chrome.png" width="25"></img>
-            </a>
-            <br>
-            <h6>best viewed in <a href="https://www.google.com/chrome/browser/">Chrome</a></h6>
+		<div id="promptbox">
+			
+			<h4 id="press-z">press Z to respawn</h4>
+			<h4 id="press-x">press X to spawn enemies</h4>
+			<br/>
+			<h1 id="pause-msg">Paused</h1>
+			
+			
+			<div id="inputBox" class="btn">
+				<h3>IDENTIFY YOURSELF:</h3>
+				<input id="usernameInput" type="text" maxlength="16" />
+				<hr id="underline"/>
+			</div>
+
+			<i style="font-size: 8pt;">PRESS ENTER TO BEGIN</i>
+
+			<br><br><br><br>
+
+			<h3><b>S D F</b> ← turn keys → <b>J K L</b></h3>
+			<br/>
+			<h3><b>space</b> - brake </h3>
+			<br/>
+			<h3><b>w</b> - fullscreen </h3>
+			<h3><b>c</b> - change view </h3>
+			<br/>
+			<h3><b>p</b> - pause </h3>
+
+			<br><br><br><br><br>
+
+			<a href="https://www.google.com/chrome/browser/">
+				<img src="images/chrome.png" width="25"></img>
+			</a>
+			<br>
+			<h6>best viewed in <a href="https://www.google.com/chrome/browser/">Chrome</a></h6>
 		</div>
 	</div>
 
 
-    <span id="rubber-gauge"></span>
-    <p id="rubber-label" class="gauge-values">RUBBER</p>
-    <p id="rubber-gauge-min" class="gauge-values">0</p>  <p id="rubber-gauge-max" class="gauge-values">5</p>
+	
 
-    <span id="speed-gauge"></span>
-    <p id="speed-label" class="gauge-values">SPEED</p>
-    <p id="speed-gauge-min" class="gauge-values">0</p>  <p id="speed-gauge-max" class="gauge-values">5</p>
+	<div class="row gauges">
+		
+		<div class="col spacer"></div>
+		
+		<div class="row nested ">
 
-    <span id="brake-gauge"></span>
-    <p id="brake-label" class="gauge-values">BRAKES</p>
-    <p id="brake-gauge-min" class="gauge-values">0</p>  <p id="brake-gauge-max" class="gauge-values">5</p>
+			<div class="gauge-width">
+				<div class="row nested center" id="rubber-val">0.00</div>
+				<span class="row nested bar" id="rubber-bar"></span>
+				<div class="row nested nowrap">
+					<div class="col col-span-3 left" id="rubber-min">0</div>
+					<div class="col col-span-6 center" id="rubber-label">RUBBER</div>
+					<div class="col col-span-3 right" id="rubber-max">5</div>
+				</div>
+			</div>
 
-    <script src="scripts/Main.js"></script>
+			<div class="col spacer"></div>
+
+			<div class="gauge-width">
+				<div class="row nested center" id="speed-val">0.00</div>
+				<span class="row nested bar" id="speed-bar"></span>
+				<div class="row nested nowrap">
+					<div class="col col-span-3 left" id="speed-min">0</div>
+					<div class="col col-span-6 center" id="speed-label">SPEED</div>
+					<div class="col col-span-3 right" id="speed-max">5</div>
+				</div>
+			</div>
+
+			<div class="col spacer"></div>
+
+			<div class="gauge-width">
+				<div class="row nested center" id="brake-val">0.00</div>
+				<span class="row nested bar" id="brake-bar"></span>
+				<div class="row nested nowrap">
+					<div class="col col-span-3 left" id="brake-min">0</div>
+					<div class="col col-span-6 center" id="brake-label">BRAKES</div>
+					<div class="col col-span-3 right" id="brake-max">5</div>
+				</div>
+			</div>
+
+		</div>
+
+
+		<div class="col fixed-width-75">
+			<div class="row nested nowrap">
+				users: <span id="numUsers"></span>
+			</div>
+			<div class="row nested nowrap">
+				ping: <span id="ping">-</span>
+			</div>
+		</div>
+
+	</div>
+
+	<script src="scripts/config.js"></script>
+	<script src="scripts/init.js"></script>
+	<script src="scripts/object-factory.js"></script>
+	<script src="scripts/main.js"></script>
+	<script src="scripts/keyboard.js"></script>
+	<script src="scripts/welcome.js"></script>
 </body>
 </html>

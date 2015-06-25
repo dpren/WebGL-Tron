@@ -1,0 +1,38 @@
+.gauges {
+	position: fixed;
+	bottom: 0px;
+	width: 100%;
+	font-size: 10px;
+	color: #fff;
+	opacity: 0.9;
+}
+
+.bar {
+	height: 3px;
+	width: 0px;
+	background-color: rgb(0,255,0);
+
+}
+
+#rubber-bar {
+	margin-top: 5px;
+	margin-bottom: 4px;
+}
+#speed-bar {
+	margin-top: 5px;
+	margin-bottom: 4px;
+}
+#brake-bar {
+	margin-top: 5px;
+	margin-bottom: 4px;
+}
+
+
+
+.playerLabel {
+	text-align: center;
+	position: absolute;
+	color: #fff;
+	background-color: rgba(40,40,40, .6);
+	/*opacity: 0.8;*/
+}
