@@ -1,6 +1,7 @@
 
 
 
+
 .left {
   text-align: left;
 }
@@ -44,6 +45,10 @@
 /* center grids */
 .row.center {
   justify-content: center;
+}
+
+.row.margin {
+  margin: 0.8rem;
 }
 
 .center .col {
@@ -112,8 +117,8 @@
   flex: 0 0 150px;
 }
 
-.fixed-width-75 {
-  flex: 0 0 75px;
+.ping {
+  flex: 0 0 60px;
 }
 
 .spacer {
@@ -148,6 +153,11 @@
   .nested .col {
     flex-basis: 100%;
   }
+  
+  
+  /*.gauges {
+    visibility: hidden;
+  }*/
 }
 
 
@@ -155,7 +165,11 @@
   .spacer {
     flex: 0 0 10px;
   }
+  .gauge-width {
+    flex-basis: 30%;
+  }
 }
+
 
 
 /* visual aid */
@@ -165,5 +179,63 @@
 .col {
   background-color: rgba(0,0,0,0.1);
   background-clip: content-box;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(0,50,50,0.5);
 }*/
+
+
+
+.main-container {
+  width: 100%;
+  height: 100%;
+}
+
+.container {
+  text-align: center;
+  height: 25%;
+  padding: 5px;
+  position: relative;
+}
+
+.container.v10 {
+  height: 10%;
+}
+.container.v15 {
+  height: 15%;
+}
+.container.v20 {
+  height: 20%;
+}
+.container.v25 {
+  height: 25%;
+}
+.container.v30 {
+  height: 30%;
+}
+.container.v40 {
+  height: 40%;
+}
+.container.v50 {
+  height: 50%;
+}
+.container.v100 {
+  height: 100%;
+}
+
+.vertical-align-wrap {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: table;
+}
+
+.vertical-align {
+  display: table-cell;
+}
+
+.vertical-align--middle {
+  vertical-align: middle;
+}
+
+.vertical-align--bottom {
+  vertical-align: bottom;
+}

@@ -2,12 +2,12 @@
 
 
 
+var grid;
 var arenaSize = 390;
 var gridTileSize = 3;
+var gridHQ = false;
 
 var easing = 0.08;
-
-var blastRadius = 1.5;
 
 var maxTailLength = 2000;
 
@@ -32,9 +32,19 @@ var boostFactor = 1.5;
 var turnSpeedFactor = 0.05;
 
 var wallAccelRange = 15;
-var wallAccelFactor = 200;
+var wallAccelFactor = 1.5;
 
 var regularSpeed = maxSpeed/3;
 var startingSpeed = regularSpeed/2;
+var cycleEnginePitchFactor = regularSpeed/1;
+
+var explode = {
+	velocity: 3,
+	particleCount: 200,
+	particleSize: 0.8,
+	time: 3,
+	decay: .98
+};
 
 var panningModel = "equalpower";
+var altCycleModel = false;

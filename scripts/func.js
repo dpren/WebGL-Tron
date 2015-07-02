@@ -52,7 +52,7 @@ var toScreenPosition = function(obj, camera) {
     vector.x = ( vector.x * widthHalf ) + widthHalf;
     vector.y = - ( vector.y * heightHalf ) + heightHalf;
 
-    return { 
+    return {
         x: vector.x,
         y: vector.y
     };
@@ -64,13 +64,13 @@ var toScreenPosition = function(obj, camera) {
 //     var cameraToEarth = earth.position.clone().sub(camera.position);
 //     var L = Math.sqrt(Math.pow(cameraToEarth.length(), 2) - Math.pow(earthGeometry.parameters.radius, 2));
 
-//     for (var i = 0; i < pins.length; i++) { 
+//     for (var i = 0; i < pins.length; i++) {
 
 //         var cameraToPin = pins[i].position.clone().sub(camera.position);
 
-//         if(cameraToPin.length() > L) { 
+//         if(cameraToPin.length() > L) {
 //             pins[i].domlabel.style.visibility = "hidden";
-//         } else { 
+//         } else {
 //             pins[i].domlabel.style.visibility = "visible";
 //         }
 //     }
@@ -79,7 +79,7 @@ var toScreenPosition = function(obj, camera) {
 var fadeInLabel = function(cycle) {
 	cycle.textLabel.style.opacity = 0;
 	return function () {
-		
+
 		cycle.textLabel.style.opacity = cycle.textLabel.style.opacity*1 + .04;
 
 		if (cycle.textLabel.style.opacity >= 0.85) {
@@ -126,7 +126,7 @@ var minDistIndex = function(array) {
 	var minObj = R.minBy(function (obj) {
 		return obj.dist;
 	}, array);
-	
+
 	var minIndex = R.indexOf(minObj, array);
 
 	return minIndex;
@@ -144,7 +144,7 @@ var distanceBetween = function(p1, p2) {
 
 
 var changeViewTargetTo = function(i) {
-	
+
 	viewTarget = i;
 
 	var alivePlayersLength = R.findLastIndex(R.propEq('alive', true))(activePlayers);
@@ -166,7 +166,9 @@ var fixCockpitCam = function() {
 		if (cycle.walls.children.length) {
 			cycle.walls.children[ cycle.walls.children.length-1 ].visible = true;
 		}
-		cycle.model.visible = true;
+		if (!altCycleModel) {
+			cycle.model.visible = true;
+		}
 	});
 };
 
@@ -195,7 +197,7 @@ var pause = function() {
 		pauseMsg.style.visibility = "hidden";
 		activePlayers.forEach( function (player) {
 			player.audio.gain.setTargetAtTime(6, ctx.currentTime, 0.02);
-			player.turnStack = []; // clear in case turn keys were pressed while paused
+			player.turnQueue = []; // clear in case turn keys were pressed while paused
 		});
 	}
 };
@@ -209,4 +211,123 @@ var animateCycle = function(cycle) {
 		cycle.model.children[5].rotation.y -= cycle.speed/2;
 		cycle.model.children[6].rotation.x += cycle.speed/3;
 	};
+};
+
+
+
+var cycleModel = function(colorCode) {
+
+	var cycleMaterial = new THREE.MeshLambertMaterial({
+		map: THREE.ImageUtils.loadTexture('images/cautionsolid.png'),
+		color: colorCode,
+		transparent: true,
+		opacity: 1.0
+	});
+
+	var wireMaterial = new THREE.MeshBasicMaterial({
+		color: 0xffff00,
+		wireframe: true,
+		wireframeLinewidth: 2,
+		transparent: true,
+		opacity: 0.0
+	});
+
+
+	var cube = new THREE.Mesh(new THREE.BoxGeometry(5.5,4,2), cycleMaterial);
+		cube.position.set(-0.75, 0, 0);
+
+	var cubeWire = new THREE.Mesh(new THREE.BoxGeometry(5.5,4,2), wireMaterial);
+		cubeWire.position.set(-0.75, 0, 0);
+
+	var bcylinder = new THREE.CylinderGeometry(2, 2, 3, 16);
+	var bwheel = new THREE.Mesh( bcylinder, cycleMaterial );
+		bwheel.position.set(-1.5, 0, 0);
+		bwheel.rotateX(halfPi);
+
+	var bcylinderWire = new THREE.CylinderGeometry(2, 2, 3, 8, 1, true);
+	var bwheelWire = new THREE.Mesh( bcylinderWire, wireMaterial );
+		bwheelWire.position.set(-1.5, 0, 0);
+		bwheelWire.rotateX(halfPi);
+
+	var fcylinder = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 10);
+	var fwheel = new THREE.Mesh( fcylinder, cycleMaterial );
+		fwheel.position.set(2, -1.3, 0);
+		fwheel.rotateX(halfPi);
+
+
+	var fcylinderWire = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 8, 1, true);
+	var fwheelWire = new THREE.Mesh( fcylinderWire, wireMaterial );
+		fwheelWire.position.set(2, -1.3, 0);
+		fwheelWire.rotateX(halfPi);
+
+
+	var ecylinder = new THREE.CylinderGeometry(0.5, 0.5, 2.5, 4);
+	var eng = new THREE.Mesh( ecylinder, wireMaterial );
+		eng.position.set(-0.2, -1, 0);
+		eng.rotateZ(halfPi);
+
+	var windshieldMaterial = new THREE.MeshNormalMaterial({side: THREE.DoubleSide});
+
+	var windshieldgeom = new THREE.PlaneBufferGeometry(2.01, 0.9);
+	var windshield = new THREE.Mesh( windshieldgeom, windshieldMaterial );
+		windshield.position.set(2.01, 1.1, 0);
+		windshield.rotateY(halfPi);
+
+	var windshieldSideGeom = new THREE.PlaneBufferGeometry(1.45, 0.9);
+	var windshield2 = new THREE.Mesh( windshieldSideGeom, windshieldMaterial );
+		windshield2.position.set(1.285, 1.1, 1.01);
+	var windshield3 = new THREE.Mesh( windshieldSideGeom, windshieldMaterial );
+		windshield3.position.set(1.285, 1.1, -1.01);
+
+
+	var model = new THREE.Object3D();
+		model.add(cube);
+		model.add(bwheel);
+		model.add(fwheel);
+		model.add(cubeWire);
+		model.add(bwheelWire);
+		model.add(fwheelWire);
+		model.add(eng);
+		model.add(windshield);
+		model.add(windshield2);
+		model.add(windshield3);
+
+	return model;
+};
+
+
+
+
+
+
+
+
+
+var animateOneFrame = function() {
+
+	activePlayers.forEach( function (cycle) {
+		if (cycle.alive) {
+			executeTurn(cycle);
+			handleBraking(cycle);
+			changeVelocity(cycle);
+			wallCheck(cycle);
+			wallAccelCheck(cycle);
+			AIWallCheck(cycle);
+			moveStuff(cycle);
+			handleRubber(cycle);
+			updateLabel(cycle);
+		}
+
+		cycle.renderList.forEach( function (el, i) {
+			el();
+		});
+
+		audioMixing(cycle);
+	});
+
+
+	if (activePlayers[viewTarget] && activePlayers[viewTarget].alive === true) {
+		cameraView(activePlayers[viewTarget]);
+		updateGauges(activePlayers[viewTarget]);
+	}
 };

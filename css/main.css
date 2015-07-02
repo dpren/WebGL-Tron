@@ -56,25 +56,17 @@ a {
 }
 
 #promptbox {
-	position: absolute;
 	color: #ffffff;
 	opacity: 0.85;
 	font-family:  nicefont, sans-serif;
 	letter-spacing: 4px;
 	text-align: center;
-	top: 5%;
-	width: 100%;
 }
 
 
-#press-z {
-	font-family:  fontawesome, sans-serif;
-	opacity: 0.4;
-	visibility: hidden;
-	margin-bottom: 10px;
-}
 
-#press-x {
+
+#press-z, #press-x {
 	font-family:  fontawesome, sans-serif;
 	opacity: 0.4;
 	visibility: hidden;
@@ -83,7 +75,6 @@ a {
 #pause-msg {
 	font-family:  fontawesome, sans-serif;
 	opacity: 0.3;
-	margin-bottom: 30px;
 }
 
 

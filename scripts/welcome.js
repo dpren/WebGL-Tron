@@ -31,14 +31,13 @@ var startGame = function(e) {
 
 			player1.name = username;
 			player1.textLabel = username;
-			//player1.playerID = activePlayers.length+1;
 			player1.color = 0x0066dd;
 
 
-			player1 = spawnCycle(player1, -300, -2, 1, false);
-			otherPlayers[0] = spawnCycle(otherPlayers[0], 300, 0, 3, true);
+			player1 = spawnCycle(player1, -330, 6, 1, false);
+			
 			changeViewTargetTo(0);
-
+			
 			
 			setTimeout( function () {
 				
@@ -48,16 +47,23 @@ var startGame = function(e) {
 				document.addEventListener('keydown', handleKeyDown, false);
 				document.addEventListener('keyup', handleKeyUp, false);
 				THREEx.FullScreen.bindKey();
+
+				otherPlayers[2] = spawnCycle(otherPlayers[2], 330, -12, 3, true);
+				otherPlayers[0] = spawnCycle(otherPlayers[0], 320, 0, 3, true);
+				otherPlayers[1] = spawnCycle(otherPlayers[1], 320, 12, 3, true);
+				otherPlayers[3] = spawnCycle(otherPlayers[3], 330, 24, 3, true);
 				
 				pause();
 
-			}, 350);
+			}, 370);
 		}
 	}
 };
 
 
 var initGame = function() {
+
+	createGrid();
 
 	camera.lookAt(player1.position);
 

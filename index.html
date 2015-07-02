@@ -29,42 +29,77 @@
 
 	<!-- <input id="chatInput" type="text" maxlength="140" /> -->
 
-	<div id="welcome-msg" style="visibility:visible;">
+	<div id="welcome-msg" class="" style="visibility:visible;">
 
-		<div id="promptbox">
+		<div id="promptbox" class="main-container">
+
+			<div class="container v15">
+			    <div class="vertical-align-wrap">
+			    	<div class="vertical-align vertical-align--bottom">
+			      		<br/>
+						<h4 id="press-z" class="row center margin">press Z to respawn</h4>
+						<h4 id="press-x" class="row center margin">press X to spawn enemies</h4>
+						<br/>
+						<h1 id="pause-msg" class="margin">Paused</h1>
+			    	</div>
+			    </div>
+			</div>
 			
-			<h4 id="press-z">press Z to respawn</h4>
-			<h4 id="press-x">press X to spawn enemies</h4>
-			<br/>
-			<h1 id="pause-msg">Paused</h1>
+
+			<div class="container v15">
+			    <div class="vertical-align-wrap">
+			    	<div class="vertical-align vertical-align--middle">
+
+			      		<div id="inputBox" class="btn row center">
+			      			<h3>IDENTIFY YOURSELF:</h3>
+			      			<input id="usernameInput" type="text" maxlength="26" />
+			      			<hr id="underline"/>
+			      		</div>
+						<i style="font-size: 8pt;">PRESS ENTER TO BEGIN</i>
+
+			    	</div>
+			    </div>
+			</div>
 			
-			
-			<div id="inputBox" class="btn">
-				<h3>IDENTIFY YOURSELF:</h3>
-				<input id="usernameInput" type="text" maxlength="16" />
-				<hr id="underline"/>
+
+			<div class="container v40">
+			    <div class="vertical-align-wrap">
+			    	<div class="vertical-align vertical-align--middle">
+						
+						<div class="row center margin">
+							<h3 class="col col-span-6 right"><b>S</b>&nbsp;←&nbsp;<b>D</b>&nbsp;←&nbsp;<b>F</b>&nbsp;← turn left &nbsp; &nbsp;</h3>
+							
+							<h3 class="col col-span-6 left">&nbsp; &nbsp; turn right →&nbsp;<b>J</b>&nbsp;→&nbsp;<b>K</b>&nbsp;→&nbsp;<b>L</b></h3>
+						</div>
+						<br>
+						<h5 class="row center margin">duplicate turn keys are bound for faster turns, pressing D+F at once performs a quick 180º</h5>
+						<br>
+						<h3 class="row center"><b>space</b>&nbsp;- brake </h3>
+						<br>
+						<h3 class="row center margin"><b>w</b>&nbsp;- fullscreen </h3>
+						<h3 class="row center margin"><b>c</b>&nbsp;- change view </h3>
+						<br>
+						<h3 class="row center"><b>p</b>&nbsp;- pause </h3>
+
+			    	</div>
+			    </div>
 			</div>
 
-			<i style="font-size: 8pt;">PRESS ENTER TO BEGIN</i>
 
-			<br><br><br><br>
+			<div class="container v25">
+			    <div class="vertical-align-wrap">
+			    	<div class="vertical-align vertical-align--middle">
+			
+						<a href="https://www.google.com/chrome/browser/" >
+							<img src="images/chrome.png" width="25"></img>
+						</a>
+						<h6 class="row center margin">best viewed in<a href="https://www.google.com/chrome/browser/">&nbsp;Chrome</a></h6>
 
-			<h3><b>S D F</b> ← turn keys → <b>J K L</b></h3>
-			<br/>
-			<h3><b>space</b> - brake </h3>
-			<br/>
-			<h3><b>w</b> - fullscreen </h3>
-			<h3><b>c</b> - change view </h3>
-			<br/>
-			<h3><b>p</b> - pause </h3>
+			    	</div>
+			    </div>
+			</div>
 
-			<br><br><br><br><br>
 
-			<a href="https://www.google.com/chrome/browser/">
-				<img src="images/chrome.png" width="25"></img>
-			</a>
-			<br>
-			<h6>best viewed in <a href="https://www.google.com/chrome/browser/">Chrome</a></h6>
 		</div>
 	</div>
 
@@ -75,7 +110,7 @@
 		
 		<div class="col spacer"></div>
 		
-		<div class="row nested ">
+		<div class="row ">
 
 			<div class="gauge-width">
 				<div class="row nested center" id="rubber-val">0.00</div>
@@ -114,7 +149,7 @@
 		</div>
 
 
-		<div class="col fixed-width-75">
+		<div class="col ping">
 			<div class="row nested nowrap">
 				users: <span id="numUsers"></span>
 			</div>
